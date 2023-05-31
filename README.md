@@ -16,6 +16,9 @@ The .Rmd file requires the data file 'pangenome_lifestyles.csv', which contains 
 ### Compiling 'Code_S2.Rmd' as a pdf
 If you wish to locally compile the file 'Code_S1.pdf' into a PDF identical to the S1 document, please also download the file 'figure_order_header.tex' and include this within the same folder as the .Rmd file.
 
+## Supplementary Material 2
+The file 'Supp_material_2.pdf' contains details and references for all the lifestyle information we collected for each species, which we then used to categorise the species into lifestyle traits.
+
 ## Phylogeny
 To build our phylogeny, we used a recently published maximum likelihood tree generated with 16S ribosomal protein data as the basis for our phylogeny (Hug et al. (2016), 'A new view of the tree of life', Nat. Microbiol.). We used the R package ‘ape’ to identify all branches that matched either a species or a genus in our dataset. In cases where we had multiple species within a single genus, we used the R package ‘phytools’ to add these species as additional branches in the tree. We used published phylogenies from the literature to add any within-genus clustering of species’ branches (details and references of these phylogenies are available in 'Supp_material_3.xlsx').
 
