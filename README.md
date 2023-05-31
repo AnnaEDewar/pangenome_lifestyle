@@ -1,5 +1,6 @@
 # Bacterial lifestyle shapes pangenomes
 Authors: Anna Dewar, Chunhui Hao, Laurence Belcher, Melanie Ghoul, Stuart West
+
 Affiliation: Department of Biology, University of Oxford, United Kingdom
 
 ## Overview
