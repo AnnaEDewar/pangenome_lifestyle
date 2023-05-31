@@ -1,8 +1,9 @@
 # Bacterial lifestyle shapes pangenomes
+Authors: Anna Dewar, Chunhui Hao, Laurence Belcher, Melanie Ghoul, Stuart West
+Affiliation: Department of Biology, University of Oxford, United Kingdom
 
-## Anna Dewar, Chunhui Hao, Laurence Belcher, Melanie Ghoul, Stuart West
-
-This repository contains code and data for the research article 'Bacterial lifestyle shapes pangenomes' (2023).
+## Overview
+This repository contains code and data for the research article 'Bacterial lifestyle shapes pangenomes'. For any queries please contact Anna Dewar at anna.dewar@biology.ox.ac.uk.
 
 ## Supplementary Material 1
 
@@ -19,5 +20,3 @@ To build our phylogeny, we used a recently published maximum likelihood tree gen
 
 The code for how did this is available to download as 'tree_script.R'. It requires the files 'Original_tree.txt' and 'pangenome_species.csv'. Each line of the script edits the tree to produce the final tree, so the lines of code should be run in the order they are in the script.
 
-## Contact
-For any queries please contact Anna Dewar at anna.dewar@biology.ox.ac.uk
