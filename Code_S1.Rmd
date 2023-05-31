@@ -21,7 +21,7 @@ header-includes:
   - \def\fnum@table{\tablename\thetable}
   - \makeatother      
 ---
-```{r global-options, include=FALSE}
+```{r global-options, include=FALSE, warning=F}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 options(tinytex.compile.min_times = 3) # Allows correct page numbers in contents page
 ```
@@ -268,7 +268,7 @@ knitr::kable(summary_lm_2,
 ### MCMCglmm
 We also found the same when we ran an analogous MCMCglmm to control for phylogenetic relationships between species: free-living species have a higher pangenome fluidity than host-associated species, although the R-squared of this method of categorising species' (Fixed effect row in Table 3) was quite low. This suggests the 'Both' category in the previous section captures some extra variance in pangenome fluidity, even though species within that category are likely highly variable.
 
-Note: this MCMCglmm was formatted as in the code above, just with a different fixed effect. All MCMCglmm models in the rest of this document are also formatted as in that code, unless specified. Full code for all models is available at *ADD  LINK HERE LATER*.
+Note: this MCMCglmm was formatted as in the code above, just with a different fixed effect. All MCMCglmm models in the rest of this document are also formatted as in that code, unless specified. Full code for all models is available at https://github.com/AnnaEDewar/pangenome_lifestyle.git.
 
 ``` {r Primary env MCMCglmm, echo=FALSE, cache=TRUE}
 mcmc_model_2 <- MCMCglmm(pangenome_fluidity ~ Category_primary_env, random=~Species, data=pangenome_lifestyles_primary_env_no_unknown,
@@ -2582,7 +2582,7 @@ $Proportion~of~core~genes~in~genome=\sum_{i}^{n}\frac{\frac{number~of~core~genes
 
 We did this for the threshold where core genes were defined as those present in 100% of genomes.
 
-``` {r core 100 in pangenome vs fluidity, fig.cap="Pangenome fluidity is highly correlated with the proportion of core genes in the pangenome.\nScatterplot showing how pangenome fluidity varies with the percentage of genes in a species’ pangenome which are ‘core’, defined in this plot as present in 100% of genomes. Data includes all 126 species."
+``` {r core 100 in pangenome vs fluidity, fig.cap="Pangenome fluidity is highly correlated with the proportion of core genes in the pangenome.\nScatterplot showing how pangenome fluidity varies with the percentage of genes in a species’ pangenome which are ‘core’, defined in this plot as present in 100% of genomes. Data includes all 126 species."}
 ## Percentage of pangenome that is core (core=100% genomes) vs pangenome fluidity
 ggplot(pangenome_lifestyles, aes(x=percentage_core_100,y=pangenome_fluidity)) +
   geom_point() +
@@ -2593,7 +2593,7 @@ ggplot(pangenome_lifestyles, aes(x=percentage_core_100,y=pangenome_fluidity)) +
   theme_classic() +
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5))
-```
+``` 
 
 ``` {r histogram of pangenome size, fig.cap="Pangenome size varies considerably across species.\nHistogram showing the variation in pangenome size, meaning the number of unique genes sequenced across all genomes of a species. Data is for all 126 species."}
 
