@@ -1,33 +1,9 @@
----
-title: "Bacterial lifestyle shapes pangenomes"
-subtitle: "Supplementary Material 1"
-abstract: "This document contains full details of all of our analyses, including those we refer to in the main text and additional supporting analyses. We have organised the documents by result, and include full details of the methods for each section. This document is also available to downloads as both an R markdown file and an R script, to enable full access to all our code. Data and the phylogeny are also provided. It is split into the following parts:(1)Pangenome fluidity correlates with whether a species is host-associated or free living;(2)Within hosts, which of four key lifestyle traits matter for shaping pangenome fluidity?(3)What about other factors in addition to lifestyle: genome size and effective population size?(4)Other measures of pangenome variation across species."
-output:
-  rmarkdown::pdf_document:
-    latex_engine: xelatex
-    number_sections: TRUE
-    toc: TRUE
-    toc_dept: 3
-    fig_caption: yes 
-    includes:  
-      in_header: figure_order_header.tex
-header-includes:
-  - \renewcommand{\figurename}{Figure S}
-  - \makeatletter
-  - \def\fnum@figure{\figurename\thefigure}
-  - \makeatother       
-  - \renewcommand{\tablename}{Table S}
-  - \makeatletter
-  - \def\fnum@table{\tablename\thetable}
-  - \makeatother      
----
-```{r global-options, include=FALSE}
+## ----global-options, include=FALSE-------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 options(tinytex.compile.min_times = 3) # Allows correct page numbers in contents page
-```
 
 
-```{r packages, include=FALSE}
+## ----packages, include=FALSE-------------------------------------------------------------------------------------------
 library(tidyverse)
 library(MCMCglmm)
 library(ape)
@@ -41,9 +17,9 @@ library(phylolm)
 library(kableExtra)
 library(FactoMineR)
 library(factoextra)
-```
 
-```{r data & tree set-up, include=FALSE}
+
+## ----data & tree set-up, include=FALSE---------------------------------------------------------------------------------
 #### Data 
 pangenome_lifestyles <- read.csv("pangenome_lifestyles_all.csv", header=T)
 
@@ -82,18 +58,9 @@ pangenome_lifestyles$pangenome_fluidity <- pangenome_lifestyles$genome_fluidity
 
 pangenome_lifestyles <- as.data.frame(pangenome_lifestyles)
 
-```
 
-# Pangenome fluidity correlates with whether a species is host-associated or free living.
 
-One major lifestyle trait is whether bacteria live freely or inside hosts. It is likely that species which live freely encounter more opportunities for gene gain, compared to host-associated species. Additionally, free-living species will likely encounter more environmental variability than host-associated species, meaning each environment may exert different selection pressures, requiring different sets of genes of the individuals present there. Together, these factors might cause pangenome fluidity to be higher in species which live freely, and lower in species which are associated with hosts.
-
-To test this prediction, we categorised species into host-associated or free-living in several ways.
-
-## Host-associated, Free-Living, or Both 
-First, we categorised species into whether they were 'Host-associated', 'Free-living' or 'Both'. We then assessed whether this was correlated with pangenome fluidity. We did this across 125 species which we could categorise into one of 'host', 'both' or 'free'.
-
-```{r Plotting & printing functions, include=FALSE}
+## ----Plotting & printing functions, include=FALSE----------------------------------------------------------------------
 # Function to plot 0s in axes nicely
 prettyZero <- function(l){
   max.decimals = max(nchar(str_extract(l, "\\.[0-9]+")), na.rm = T)-1
@@ -149,11 +116,9 @@ summary_mcmc_glmm <- function(mcmc_model) {
   return(summary_subset)
 }
 
-```
-### Linear model
-Using a linear model, we found that host-reliance was significantly correlated with species' pangenome fluidity: 'Host' species had lower pangenome fluidity than both species which were 'free-living' and species which were sometimes 'host-associated' and sometimes 'free-living' (values for rows 2 and 3 are testing if there is a difference in the pangenome fluidity of species which were 'Both' and 'Free', compared to 'Host').
 
-``` {r Host/free vs pangenome fluidity lm, echo=FALSE}
+
+## ----Host/free vs pangenome fluidity lm, echo=FALSE--------------------------------------------------------------------
 pangenome_lifestyles_host_free_no_unknown <- pangenome_lifestyles %>%
   filter(Host_or_free != "Unknown")
 
@@ -164,14 +129,9 @@ summary_lm_1 <- lm_summary_table(lm(pangenome_fluidity~Host_or_free,data=pangeno
 
 knitr::kable(summary_lm_1, 
              caption= "Results from a linear model with pangenome fluidity as the response variable and host-associated, free-living or both as the explanatory variable.", digits=4) %>% kable_styling(latex_options = "HOLD_position")
-```
 
-### MCMCglmm
-However, this approach treats all species as independent data points, which is not the case due to shared ancestry. Therefore, we next ran a MCMCglmm model to control for phylogenetic relationships between species. We did this within the MCMCglmm by incorporating a matrix-version of the phylogeny as a random effect. 
 
-To see how we did this, see code below:
-
-``` {r Host/free vs genome fluidity MCMCglmm, echo=TRUE, cache=TRUE}
+## ----Host/free vs genome fluidity MCMCglmm, echo=TRUE, cache=TRUE------------------------------------------------------
 ## Label tree nodes with numbers
 # 'dataTree' is our phylogeny as an ultrametric tree in nexus format
 dataTreeNode <- makeNodeLabel(dataTree, method = "number")
@@ -187,11 +147,9 @@ mcmc_model_1 <- MCMCglmm(pangenome_fluidity ~ Host_or_free, random=~Species,
                          data=pangenome_lifestyles_host_free_no_unknown,
                          nitt=50000, 
                          prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
-```
 
-Our MCMCglmm analyses produced similar results: host-associated species have lower pangenome fluidity than both species which are sometimes free-living ('Both') and species that are always free-living ('Free'). We found that once accounting for phylogeny, which explained approximately 48% of the variance in pangenome fluidity, whether a species was host-associated or free-living explained around 14% of the variance in pangenome fluidity.
 
-``` {r Host/free vs pangenome fluidity MCMCglmm output, echo=FALSE}
+## ----Host/free vs pangenome fluidity MCMCglmm output, echo=FALSE-------------------------------------------------------
 summary_mcmc_model_1 <- summary_mcmc_glmm(mcmc_model_1)
 
 mFixed <- mean(mcmc_model_1$Sol[,2]) * mcmc_model_1$X[, 2] + 
@@ -219,11 +177,9 @@ colnames(R2_table_1) <- c("R-squared value")
 knitr::kable(list(summary_mcmc_model_1,R2_table_1),
              caption="Results from the above MCMCglmm with pangenome fluidity as the response variable, whether a species is host-associated, free-living or both as the fixed effect, and phylogeny as a random effect.", digits=4) %>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-We can view these results together with the data in Figure S1. 
 
-```{r Host/Free/Both graph, echo=FALSE, fig.cap="Host-reliance correlates with pangenome fluidity.", fig.width=4, fig.height=3}
+## ----Host/Free/Both graph, echo=FALSE, fig.cap="Host-reliance correlates with pangenome fluidity.", fig.width=4, fig.height=3----
 ggplot(pangenome_lifestyles_host_free_no_unknown, aes(x=Host_or_free,y=pangenome_fluidity)) +
   geom_jitter(width=0.25, aes(colour=Host_or_free)) +
   labs(y="Pangenome\nfluidity", x="Host- or free-living") +
@@ -239,24 +195,17 @@ ggplot(pangenome_lifestyles_host_free_no_unknown, aes(x=Host_or_free,y=pangenome
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         legend.position="none")
 
-```
 
-## Primary environment: Host-associated or Free-living
 
-For the previous method, species' in the 'both' category are treated as a separate category, even though some may be predominantly host-associated or free-living, and only rarely live in the other. To simplify this, we recorded each species' primary environment and categorised this as either 'Host-associated' or 'Free-living'. Please see the table below to see some examples of this:
-
-``` {r Primary env data}
+## ----Primary env data--------------------------------------------------------------------------------------------------
 pangenome_lifestyles_primary <- pangenome_lifestyles_host_free_no_unknown %>%
   select(Species, Primary_environment, Category_primary_env)
 
 knitr::kable(head(pangenome_lifestyles_primary), 
              caption= "Example of species' primary environments, and their 'Host' or 'Free' catgeories.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-### Linear model
-We found with a linear model that species with a free-living primary environment had significantly higher pangenome fluidity than those with a host-associated primary environment.
 
-``` {r Primary environment lm, echo=FALSE}
+## ----Primary environment lm, echo=FALSE--------------------------------------------------------------------------------
 pangenome_lifestyles_primary_env_no_unknown <- pangenome_lifestyles %>%
   filter(Category_primary_env != "Unknown")
 
@@ -266,14 +215,9 @@ summary_lm_2 <- lm_summary_table(lm(pangenome_fluidity~Category_primary_env,data
 
 knitr::kable(summary_lm_2, 
              caption= "Results from a linear model with pangenome fluidity as the response variable and whether a species' primary environment is host-associated or free-living as the explanatory variable.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-### MCMCglmm
-We also found the same when we ran an analogous MCMCglmm to control for phylogenetic relationships between species: free-living species have a higher pangenome fluidity than host-associated species, although the R-squared of this method of categorising species' (Fixed effect row in Table 3) was quite low. This suggests the 'Both' category in the previous section captures some extra variance in pangenome fluidity, even though species within that category are likely highly variable.
 
-Note: this MCMCglmm was formatted as in the code above, just with a different fixed effect. All MCMCglmm models in the rest of this document are also formatted as in that code, unless specified. Full code for all models is available at *ADD  LINK HERE LATER*.
-
-``` {r Primary env MCMCglmm, echo=FALSE, cache=TRUE}
+## ----Primary env MCMCglmm, echo=FALSE, cache=TRUE----------------------------------------------------------------------
 mcmc_model_2 <- MCMCglmm(pangenome_fluidity ~ Category_primary_env, random=~Species, data=pangenome_lifestyles_primary_env_no_unknown,
                          nitt=50000,
                          prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
@@ -303,10 +247,9 @@ colnames(R2_table_2) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_2),R2_table_2), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, whether a species' primary environment is host-associated or free-living as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
-```
-We can view these results with the accompanying data in the figure below.
 
-``` {r primary env graph, fig.cap="Whether a species' primary environment is host-associated or free-living correlates with pangenome fluidity.", fig.width=4.5, fig.height=3}
+
+## ----primary env graph, fig.cap="Whether a species' primary environment is host-associated or free-living correlates with pangenome fluidity.", fig.width=4.5, fig.height=3----
 ggplot(pangenome_lifestyles_primary_env_no_unknown, aes(x=Category_primary_env,y=pangenome_fluidity)) +
   geom_jitter(width=0.25, aes(colour=Category_primary_env)) +
   labs(y="Pangenome\nfluidity", x="Primary environment:\nHost- or Free-living") +
@@ -321,17 +264,9 @@ ggplot(pangenome_lifestyles_primary_env_no_unknown, aes(x=Category_primary_env,y
         legend.position="none")
 
 
-```
 
 
-## Host, Mostly-Host, Mostly Free and Free
-
-Finally, we combined information from our first and second method of categorising species into a third variable. To do this, we split the 'Both' category from the first method into two, based on whether species' primary environment was host-associated or free-living. This meant we had four categories: 'Host' (species that are always host-associated), 'Mostly host' (species with a host-associated primary environment, but which sometimes are free-living), 'Mostly free' (species with a free-living primary environment, but which are sometimes host-associated), and 'Free' (species which are always host-associated). We used this method of categorising species in the main text of the paper. 
-
-### Linear model
-We found that species which are always host-associated have a lower pangenome fluidity than species which are at least sometimes free-living.
-
-``` {r Host or free 4 lm, echo=FALSE}
+## ----Host or free 4 lm, echo=FALSE-------------------------------------------------------------------------------------
 pangenome_lifestyles_host_free_4 <- pangenome_lifestyles %>%
   mutate(Host_free_4 = case_when(Host_or_free=="Host" ~ "Host",
                                  Host_or_free=="Free" ~ "Free",
@@ -350,13 +285,9 @@ summary_lm_3 <- lm_summary_table(lm(pangenome_fluidity~Host_free_4, data=pangeno
 
 knitr::kable(summary_lm_3, 
              caption= "Results from a linear model with pangenome fluidity as the response variable and whether a species' is always host-associated, Mostly host-associated, mostly free-living, or always free-living as the explanatory variable.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-### MCMCglmm
 
-We also found analogous results when we ran a MCMCglmm to control for phylogenetic relationships between species.
-
-``` {r Host or free 4 MCMCglmm, echo=FALSE, cache=TRUE}
+## ----Host or free 4 MCMCglmm, echo=FALSE, cache=TRUE-------------------------------------------------------------------
 mcmc_model_3 <- MCMCglmm(pangenome_fluidity ~ Host_free_4, random=~Species, data=pangenome_lifestyles_host_free_4_no_unknown,
                          nitt=50000,
                          prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
@@ -383,11 +314,9 @@ rownames(R2_table_3) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_3) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_3),R2_table_3), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, whether a species' is always host-associated, mostly host-associated, mostly free-living or always free-living as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We can view these results with the accompanying data in the figure below: this is the same as Figure 2a in the main text. 
 
-``` {r Host free 4 graph, fig.cap="Whether a species' is host-associated, free-living, or a mixture correlates with pangenome fluidity.", fig.width=5.5, fig.height=3}
+## ----Host free 4 graph, fig.cap="Whether a species' is host-associated, free-living, or a mixture correlates with pangenome fluidity.", fig.width=5.5, fig.height=3----
 ggplot(pangenome_lifestyles_host_free_4_no_unknown, aes(x=Host_free_4, y=pangenome_fluidity)) +
   geom_jitter(width=0.25, aes(colour=Host_free_4)) +
   labs(y="Pangenome \nFluidity", x="Host- or free-living") +
@@ -403,27 +332,9 @@ ggplot(pangenome_lifestyles_host_free_4_no_unknown, aes(x=Host_free_4, y=pangeno
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         legend.position = "none")
 
-```
-
-## Summary
-Taken together, we find that whether a species is free-living or host-associated appears to be a key correlate of pangenome fluidity across bacterial species. Host-associated species have a lower pangenome fluidity than free-living species, while species that are sometimes host-associated and sometimes free-living have an intermediate pangenome fluidity. 
-
-# Within hosts, which of four key lifestyle traits matter for shaping pangenome fluidity?
-
-However, categorising species as free-living or host-associated does not account for variation within each of the categories. All but four of our species have been found to live, at least sometimes, associated with hosts, and there is clearly much variation in pangenome fluidity left unexplained. For example, some species live across multiple hosts, while others only ever live inside one; some species can live in multiple sites inside hosts, while others are restricted to certain areas of the host, or even only within their cells. 
-
-Therefore, there are likely to be many lifestyle traits which differentiate host-associated bacteria. We can predict how each trait might influence a species’ pangenome fluidity. We can then examine whether pangenome fludity is correlated with such traits in the direction we would expect, to resolve whether they are acting directly to shape pangenome fluidity across species. 
-
-To do this, we categorised our species into four additional lifestyle traits that vary among host-associated species, each with a predicted impact on pangenome fluidity. These traits were: (i) nature of host reliance (obligate or facultative); (ii) location within host (intracellular or extracellular); (iii) effect on host (pathogen or mutualist); motility (non-motile or motile). For each, the first category listed is predicted to have a lower pangenome fluidity than the second category. For several of these traits, we included an additional ‘Both’ category to capture species which can live both inside and outside cells, act both as a pathogen and a mutualist, or exist as both non-motile and motile cells. 
 
 
-First, we found that all four traits correlated with pangenome fluidity in the direction we expected. 
-
-## Nature of host-reliance: obliagte or facultative
-
-We found that obligately host-reliant species had a lower pangenome fluidity than facultatively host-reliant species. There were 115 species for which we had data on their nature of host reliance. First, we found this result using a simple linear model. 
-
-``` {r Ob/fac vs pangenome fluidity lm, echo=FALSE}
+## ----Ob/fac vs pangenome fluidity lm, echo=FALSE-----------------------------------------------------------------------
 ### Obligate/Faculative
 # (all host/both where Ob/Fac != Unknown)
 # N= 115
@@ -437,11 +348,9 @@ summary_lm_4 <- lm_summary_table(lm(pangenome_fluidity~Obligate_facultative, dat
 
 knitr::kable(summary_lm_4, 
              caption= "Results from a linear model with pangenome fluidity as the response variable and whether a species' is obligately or facultatively host-reliant as the explanatory variable.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We also found the same when we controlled for phylogeny using a MCMCglmm. Whether a species was obligately or facultatively host-reliant explained around 14% of the variance in pangenome fluidity across species. 
 
-``` {r Ob/fac vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE}
+## ----Ob/fac vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE-----------------------------------------------------
 ## MCMCglmm model
 mcmc_model_4 <- MCMCglmm(pangenome_fluidity ~ Obligate_facultative, random=~Species, data=pangenome_lifestyles_ob_fac,
                          nitt=50000,
@@ -468,11 +377,9 @@ colnames(R2_table_4) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_4),R2_table_4), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, whether a species' is obligately or facultatively host-reliant as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-We can view these results from the MCMCglmm alongside the data in the following figure. 
 
-``` {r Ob/fac vs pangenome fluidity figure, fig.cap="Obligately host-reliant species have a lower pangenome fluidity than facultatively host-reliant species", fig.width=4.5, fig.height=3}
+## ----Ob/fac vs pangenome fluidity figure, fig.cap="Obligately host-reliant species have a lower pangenome fluidity than facultatively host-reliant species", fig.width=4.5, fig.height=3----
 
 ggplot(pangenome_lifestyles_ob_fac, aes(x=Obligate_facultative,y=pangenome_fluidity)) +
   geom_jitter(width=0.25, aes(colour=Obligate_facultative)) +
@@ -486,13 +393,9 @@ ggplot(pangenome_lifestyles_ob_fac, aes(x=Obligate_facultative,y=pangenome_fluid
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         legend.position = "none")
 
-```
 
-## Location within host: intracellular or extracellular
 
-We found that species which lived inside their host(s) cells had a lower pangenome fluidity than species which lived outside host cells. There were 120 species for which we had data on their location within hosts. We found these results first using a simple linear model.
-
-``` {r extra/intra vs pangenome fluidity lm, echo=FALSE}
+## ----extra/intra vs pangenome fluidity lm, echo=FALSE------------------------------------------------------------------
 pangenome_lifestyles_intra_extra <- pangenome_lifestyles %>%
   filter(Host_or_free != "Unknown") %>% filter(Host_or_free != "Free") %>%
   filter(Intra_or_extracellular != "Unknown")
@@ -501,11 +404,9 @@ summary_lm_5 <- lm_summary_table(lm(pangenome_fluidity~Intra_or_extracellular, d
 
 knitr::kable(summary_lm_5, 
              caption= "Results from a linear model with pangenome fluidity as the response variable and whether a species lives inside or outside host cells as the explanatory variable.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We then controlled for phylogeny with a MCMCglmm and found analogous results. Location within host accounted for 13% of the variance in pangenome fluidity across species.
 
-``` {r extra/intra vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE}
+## ----extra/intra vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE------------------------------------------------
 ## MCMCglmm model
 mcmc_model_5 <- MCMCglmm(pangenome_fluidity ~ Intra_or_extracellular, random=~Species, data=pangenome_lifestyles_intra_extra,
                          nitt=50000,
@@ -532,11 +433,9 @@ rownames(R2_table_5) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_5) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_5),R2_table_5), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, whether a species lives inside or outside host cells as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We can also set species which are extracellular as the intercept, to examine if species which are extracellular have significantly higher pangenome fluidity than species in the intermediate 'both' category.
 
-``` {r extra/intra vs pangenome fluidity MCMCglmm - extracellular as intercept, echo=FALSE, cache=TRUE}
+## ----extra/intra vs pangenome fluidity MCMCglmm - extracellular as intercept, echo=FALSE, cache=TRUE-------------------
 # Reorder factor 
 pangenome_lifestyles_intra_extra_reordered <- pangenome_lifestyles_intra_extra
 
@@ -568,11 +467,9 @@ rownames(R2_table_5b) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_5b) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_5b),R2_table_5b), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, whether a species lives inside or outside host cells as the fixed effect, and phylogeny as a random effect; instead with extracellular as the intercept.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We can view these results together with the data in the following figure - this is the same as Figure 2c in the main text.
 
-``` {r extra/intra vs pangenome fluidity graph, fig.cap="Intracellular species have a lower pangenome fluidity than extracellular species", fig.width=4.5, fig.height=3}
+## ----extra/intra vs pangenome fluidity graph, fig.cap="Intracellular species have a lower pangenome fluidity than extracellular species", fig.width=4.5, fig.height=3----
 ggplot(pangenome_lifestyles_intra_extra, aes(x=Intra_or_extracellular,y=pangenome_fluidity)) +
   geom_jitter(width=0.25, aes(colour=Intra_or_extracellular)) +
   labs(y="Pangenome \nfluidity", x="Host location") +
@@ -586,13 +483,9 @@ ggplot(pangenome_lifestyles_intra_extra, aes(x=Intra_or_extracellular,y=pangenom
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         legend.position = "none")
 
-```
 
-## Effect on host: pathogen or mutualist
 
-We found that pathogenic species had lower pangenome fluidity compared to mutualist species and also compared to species which were sometimes pathogenic and sometimes mutualist. This was across 119 species for which we had effect on host data. We first found these results with a simple linear model. 
-
-``` {r eff_host vs pangenome fluidity lm}
+## ----eff_host vs pangenome fluidity lm---------------------------------------------------------------------------------
 pangenome_lifestyles_effect_host <- pangenome_lifestyles %>%
   filter(Host_or_free != "Unknown") %>% filter(Host_or_free != "Free") %>%
   filter(Effect_on_host != "Unknown")
@@ -602,11 +495,9 @@ summary_lm_6 <- lm_summary_table(lm(genome_fluidity~Effect_on_host, data=pangeno
 knitr::kable(summary_lm_6, 
              caption= "Results from a linear model with pangenome fluidity as the response variable and whether a species' effect on its host as the explanatory variable.")%>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-We then found analogous results when controlling for phylogeny using a MCMCglmm. 
 
-``` {r eff_host vs pangenome fluidity mcmcglmm, cache=TRUE}
+## ----eff_host vs pangenome fluidity mcmcglmm, cache=TRUE---------------------------------------------------------------
 mcmc_model_6 <- MCMCglmm(pangenome_fluidity ~ Effect_on_host, random=~Species, data=pangenome_lifestyles_effect_host,
                          nitt=50000,
                          prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
@@ -633,11 +524,9 @@ colnames(R2_table_6) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_6),R2_table_6), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, whether a species has a pathogenic or mutualistic effect on its host(s) as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-We can view these results from the MCMCglmm together with the data in the following graph, which is the same as Figure 2d in the main text.
 
-``` {r effect on host vs pangenome fluidity graph, fig.cap="Non-motile species have a lower pangenome fluidity than motile species", fig.width=4.5, fig.height=3}
+## ----effect on host vs pangenome fluidity graph, fig.cap="Non-motile species have a lower pangenome fluidity than motile species", fig.width=4.5, fig.height=3----
 
 ggplot(pangenome_lifestyles_effect_host, aes(x=Effect_on_host,y=pangenome_fluidity)) +
   geom_jitter(width=0.25, aes(colour=Effect_on_host)) +
@@ -652,22 +541,16 @@ ggplot(pangenome_lifestyles_effect_host, aes(x=Effect_on_host,y=pangenome_fluidi
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         legend.position = "none")
-```
 
-## Motility: non-motile or motile
 
-We found that non-motile species had lower pangenome fluidity than motile species. This was across 126 species, since we had motility information for all species. First, we found these results in a simple linear model.
-
-``` {r motility vs pangenome fluidity lm}
+## ----motility vs pangenome fluidity lm---------------------------------------------------------------------------------
 summary_lm_7 <- lm_summary_table(lm(genome_fluidity~Motility, data=pangenome_lifestyles))
 
 knitr::kable(summary_lm_7, 
              caption= "Results from a linear model with pangenome fluidity as the response variable and a species' motility as the explanatory variable.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We also found analogous results when controlling for phylogeny with a MCMCglmm.
 
-``` {r motility vs pangenome fluidity mcmcglmm, cache=TRUE}
+## ----motility vs pangenome fluidity mcmcglmm, cache=TRUE---------------------------------------------------------------
 mcmc_model_7 <- MCMCglmm(pangenome_fluidity ~ Motility, random=~Species, data=pangenome_lifestyles, 
                          nitt=50000,
                          prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
@@ -693,11 +576,9 @@ rownames(R2_table_7) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_7) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_7),R2_table_7), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, a species' motility as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We can view these MCMCglmm results together with the data in the following graph, which is the same as Figure 2e in the main text.
 
-```{r motility vs pangenome fluidity graph, fig.cap="Non-motile species have a lower pangenome fluidity than motile species", fig.width=4.5, fig.height=3}
+## ----motility vs pangenome fluidity graph, fig.cap="Non-motile species have a lower pangenome fluidity than motile species", fig.width=4.5, fig.height=3----
 ggplot(pangenome_lifestyles, aes(x=Motility,y=pangenome_fluidity)) +
   geom_jitter(width=0.25, aes(colour=Motility)) +
   labs(y="Pangenome\nfluidity", x="Motility") +
@@ -709,20 +590,9 @@ ggplot(pangenome_lifestyles, aes(x=Motility,y=pangenome_fluidity)) +
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         legend.position = "none")
-```
 
-## Summary
 
-We found that all four lifestyle traits which might vary across host-associated species were significantly correlated with pangenome fluidity in the direction we predicted. Species have lower pangenome fluidity if they are obligate compared to facultative, intracellular compared to extracellular, pathogens compared to mutualists and non-motile compared to motile. 
-
-## Correlations between lifestyle traits
-
-Next, we wanted to explore the extent to which each of these lifestyle traits directly influenced species' pangenome fluidity, and how much of this influence was independent of the other lifestyle traits.
-
-### Variance in fluidity explained by four lifestyle traits across host-associated species
-First, we explored how much variance in pangenome fluidity was explained by the four lifestyle traits together, taking into account phylogeny. We did this across the 115 species for which we had data on all four of the lifestyle traits.
-
-``` {r four traits mcmcglmm, cache=TRUE}
+## ----four traits mcmcglmm, cache=TRUE----------------------------------------------------------------------------------
 pangenome_lifestyles_no_unknown_nofree <- pangenome_lifestyles %>%
   filter(Host_or_free != "Unknown") %>% filter(Host_or_free != "Free") %>%
   filter(Obligate_facultative != "Unknown") %>% filter(Effect_on_host != "Unknown")
@@ -759,19 +629,9 @@ rownames(R2_table_8) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_8) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_8),R2_table_8), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, four lifestyle traits as fixed effects, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We found that overall, the four traits together explained ~25.7% of the total variance in pangenome fluidity across 115 species.
 
-This is a high R-squared value for biological data. However, the sum of the R-squared values from the four models where each lifestyle trait was a single fixed effect is 0.458, or 45.8% of the variance explained. Summing the values in this way assumes that the variances in pangenome fluidity explained by each trait are independent from the variances explained by the other traits. However, we instead find that all four traits explain only 25.7% of the variance in pangenome fluidity, just over half the summed total. This suggests that the influence of each lifestyle trait on pangenome fluidity is not independent from one another. This could be because one or more of the lifestyle traits might be themselves correlated. For example, whether a species is obligate or facultative may correlate with whether a species lives inside or outside cells and its motility.
-
-Next, we used several complimentary methods to explore potential correlations between the four lifestyle traits. 
-
-### Variance in fluidity explained by all five lifestyle traits together
-
-We also analysed what percentage of variance in pangenome fluidity was explained when we considered whether a species was host-associated or free-living, in addition to the four lifestyle traits we looked at in the model above. We did this for the 119 species which we had information on all lifestyle traits, including free-living species for which several lifestyle traits were non-applicable. As in the previous analsyis, we controlled for phylogenetic relationships.
-
-``` {r four traits plus host mcmcglmm, cache=TRUE}
+## ----four traits plus host mcmcglmm, cache=TRUE------------------------------------------------------------------------
 pangenome_lifestyles_no_unknown_nofree_host_free_4 <- pangenome_lifestyles_host_free_4_no_unknown %>%
   filter(Host_or_free != "Unknown") %>% #filter(Host_or_free != "Free") %>%
   filter(Obligate_facultative != "Unknown") %>% filter(Effect_on_host != "Unknown")
@@ -811,20 +671,9 @@ rownames(R2_table_8b) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_8b) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_8b),R2_table_8b), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, four lifestyle traits as fixed effects, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We found that across all five lifestyle traits in Figures 1b and 2 in the main text, lifestyle explained 29.9% of the variance in pangenome fluidity. This is very high for an evolutionary comparative analysis, and more than eight times the average achieved in evolutionary and comparative analyses.
 
-Refs for more information on % variance explained in evolutionary & comparative studies: (i) Michael D. Jennions, Anders Pape Møller, A survey of the statistical power of research in behavioral ecology and animal behavior, Behavioral Ecology, Volume 14, Issue 3, May 2003, Pages 438–445; (ii) West, Stuart A., et al. “Sex-Ratio Adjustment When Relatives Interact: A Test of Constraints on Adaptation.” Evolution, vol. 59, no. 6, 2005, pp. 1211–28..
-
-### Phylogenetic regressions
-First, we used phylogenetic regression models to assess evidence for correlations between all pairs of the four lifestyle traits across 115 host-associated species. 
-
-For each trait we assigned a 0 to species with the less variable lifestyle (obligate, intracellular, pathogenic, non-motile) and a 1 to species with the more variable lifestyle (facultative, extracellular, mutualistic, motile). For species which were in an intermediate category for the trait ('both'), we assigned them a value of 0.5. This meant host reliance was a binary trait (obligate=0,facultative=1), and host location, effect on host and motility were treated as discrete variables with three evenly spaced levels.
-
-When host reliance was the response variable we used phylogenetic logistic regression models (`phyloglm()` function in the `phylolm` R package). For models where the other three traits were the response variable, we used phylogenetic linear regressions (`phylolm()` function in `phylolm` package in R).
-
-``` {r phylo lms/glms with both}
+## ----phylo lms/glms with both------------------------------------------------------------------------------------------
 
 ### Now can run some phylolms()  & phyloglms() with the original data including both. 
 pangenome_lifestyles_no_unknown_nofree_with_both <- pangenome_lifestyles_no_unknown_nofree %>%
@@ -898,21 +747,9 @@ phylolm_both_EHM <- lm_summary_table(phylolm(EH~M, data=pangenome_lifestyles_no_
 
 knitr::kable(phylolm_both_EHM, caption="Results from a phylogenetic logistic regression correlated evolution model between effect on host and motility", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-The results of these phylogenetic regressions suggest that species which were obligately reliant with hosts were also more likely to live inside host cells, act as pathogens, and be non-motile, while species which lived inside cells were more likely to act as pathogens (Host reliance vs: (i) Host location, p=0.028; (i) Effect on host, p=0.017; (iii) Motility, p=0.005; Host location vs. effect on host: p<0.001).
 
-### Pagel's method of correlated evolution
-
-Next, we used Pagel's 1994 method of correlated evolution to test for correlated evolution between pairs of binary traits: Pagel, M. (1994) Detecting correlated evolution on phylogenies: A general method for the comparative analysis for discrete characters. Proceedings of the Royal Society B, 255, 37-45. We implemented this method using the `fitPagel()` function of the R package `phytools`.
-
-This method defines four potential states based on two binary traits:(0,0), (1,0), (0,1), and (1,1). The distribution of these states are then examined across the phylogeny to identify whether the each of the traits is evolving between state 0 and 1 independently, or instead are in some way dependent on the other trait. 
-
-To use this method, we needed to convert our traits into binary traits. To do this, we simplified the traits into binary variables, where 0 was the lower variability lifestyle (obligate, intracellular, pathogenic and non-motile) and 1 was the higher variability lifestyle (facultative, extracellular, mutualistic and motile), as before. We needed to merge species from the 'both' category to either a 0 or 1 for several traits. We did this by: (i) merging species which were sometimes intracellular together with those that were always intracellular; (ii) merging species which were sometimes pathogenic with species that were always pathogenic; (iii) merging species which were sometimes motile with species that were always motile.
-
-We found that the evolution of species' host reliance was significantly correlated with the evolution of species' host location. 
-
-``` {r pagel OFIE, cache=TRUE} 
+## ----pagel OFIE, cache=TRUE--------------------------------------------------------------------------------------------
 # We'll need to simplify the traits into binary values.
 # We've merged the 'both' category with one of the two catgeories.
 
@@ -963,11 +800,9 @@ colnames(OF_IE_correlated_table_fit) <- c("Log-likelihood","AIC")
 knitr::kable(list(OF_IE_correlated_table_hyp,OF_IE_correlated_table_fit), caption="Results from a Pagel's correlated evolution model between host reliance and host location", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
 
-```
 
-We found that the evolution of species' host reliance was independent from the evolution of species' effect on host.
 
-``` {r pagel OFEH, cache=TRUE} 
+## ----pagel OFEH, cache=TRUE--------------------------------------------------------------------------------------------
 EH_vector <- setNames(pangenome_lifestyles_no_unknown_nofree_binary_row$EH,rownames(pangenome_lifestyles_no_unknown_nofree_binary_row))
 
 # Run pagel model
@@ -989,11 +824,9 @@ colnames(OF_EH_correlated_table_fit) <- c("Log-likelihood","AIC")
 knitr::kable(list(OF_EH_correlated_table_hyp, OF_EH_correlated_table_fit), caption="Results from a Pagel's correlated evolution model between host reliance and effect on host", digits=4) %>% kable_styling(latex_options = "HOLD_position")
 
 
-```
 
-We found that the evolution of species' host reliance was significantly correlated with the evolution of species' motility.
 
-``` {r pagel OFM, cache=TRUE} 
+## ----pagel OFM, cache=TRUE---------------------------------------------------------------------------------------------
 # Make M vector
 M_vector <- setNames(pangenome_lifestyles_no_unknown_nofree_binary_row$M,rownames(pangenome_lifestyles_no_unknown_nofree_binary_row))
 
@@ -1016,11 +849,9 @@ colnames(OF_M_correlated_table_fit) <- c("Log-likelihood","AIC")
 knitr::kable(list(OF_M_correlated_table_hyp,OF_M_correlated_table_fit), caption="Results from a Pagel's correlated evolution model between host reliance and motility", digits=4) %>% kable_styling(latex_options = "HOLD_position")
 
 
-```
 
-We found the evolution of species' host location was independent from the evolution of species' effect on host.
 
-``` {r pagel IEEH, cache=TRUE} 
+## ----pagel IEEH, cache=TRUE--------------------------------------------------------------------------------------------
 IE_EH_correlated <- fitPagel(dataTree_pagel, x=IE_vector, y=EH_vector)
 
 # likelihood-ratio:  1.87169 
@@ -1039,11 +870,9 @@ colnames(IE_EH_correlated_table_fit) <- c("Log-likelihood","AIC")
 knitr::kable(list(IE_EH_correlated_table_hyp,IE_EH_correlated_table_fit), caption="Results from a Pagel's correlated evolution model between host location and effect on host", digits=4)%>%kable_styling(latex_options = "HOLD_position")
 
 
-```
 
-We found the evolution of species' host location was independent from the evolution of species' motility.
 
-``` {r pagel IEM, cache=TRUE} 
+## ----pagel IEM, cache=TRUE---------------------------------------------------------------------------------------------
 IE_M_correlated <- fitPagel(dataTree_pagel, x=IE_vector, y=M_vector)
 
 # likelihood-ratio:  4.32513 
@@ -1062,11 +891,9 @@ colnames(IE_M_correlated_table_fit) <- c("Log-likelihood","AIC")
 knitr::kable(list(IE_M_correlated_table_hyp, IE_M_correlated_table_fit), caption="Results from a Pagel's correlated evolution model between host location and motility", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
 
-```
 
-We found the evolution of species' effect on host was independent from the evolution of species' motility.
 
-``` {r pagel EHM, cache=TRUE} 
+## ----pagel EHM, cache=TRUE---------------------------------------------------------------------------------------------
 EH_M_correlated <- fitPagel(dataTree_pagel, x=EH_vector, y=M_vector)
 
 # likelihood-ratio:  6.27651  
@@ -1085,17 +912,9 @@ colnames(EH_M_correlated_table_fit) <- c("Log-likelihood","AIC")
 knitr::kable(list(EH_M_correlated_table_hyp,EH_M_correlated_table_fit), caption="Results from a Pagel's correlated evolution model between effect on host and motility", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
 
-```
-
-We found that obligate host reliance was correlated with the evolution of living inside cells and with reduced motility (Pagel’s correlated evolution model; Host reliance vs: (i) Host location, p=0.011; (ii) Motility, p<0.001). This agreed with the results from our phylogenetic regressions. 
-
-However, in contrast, our results using Pagel's method do not suggest that the evolution of host reliance and effect on host, and also the evolution of host location and effect on host, are correlated. This might be due to host location and effect on host now being treated as a binary variable, removing the intermediate category, and thus some of the variation across species.
-
-### Binomial generalised linear models
-Next, using the same binary variables, we ran binomial generalised linear models (glms) between the pairs of the four traits. We did this to examine whether species with a more variable lifestyle for one trait were more likely to also have a more variable lifestyle for the other trait. This asks simply whether species are more likely to have one lifestyle if they have another, independent of phylogeny. 
 
 
-``` {r four traits binomial glms, cache=TRUE}
+## ----four traits binomial glms, cache=TRUE-----------------------------------------------------------------------------
 # We can start to explore this with some simple binomial glms
 
 # (Intercept)  0.04082    0.28577   0.143    0.886    
@@ -1198,26 +1017,15 @@ binomial_corr <- binomial_corr_1 + binomial_corr_2 + binomial_corr_3 + binomial_
 ## Although these simple models do not take phylogeny into account, we find that:
 # Host reliance (OF) is significantly correlated with the three other traits.
 # And Host location (IE) is significantly correlated with effect on host (EH).
-```
 
-The results of these binomial glms suggest that host reliance is significantly correlated with the three other traits, and host location is significantly correlated with a species' effect on host. This is qualitatively the same as the results from the phylogenetic regressions of the traits when including the intermediate categories, although those models accounted for phylogeny and these models do not.
 
-We can visualise the correlations between traits in the figure below. For example, in the first panel, we can see that there are similar numbers of intracellular species that are obligate and facultative, while extracellular species are much more likely to be facultative than obligate. However, we will avoid over-interpretation of this graph, since the size of dots refers to the number of species, which does not control for phylogeny relationships between those species.
-
-``` {r four traits binomial pair graphs, fig.cap="Associations between pairs of four lifestyle traits.The size of circles correspond to the number of species in one of four combinations of lifestyles for each trait.", fig.width=7, fig.height=8}
+## ----four traits binomial pair graphs, fig.cap="Associations between pairs of four lifestyle traits.The size of circles correspond to the number of species in one of four combinations of lifestyles for each trait.", fig.width=7, fig.height=8----
 
 binomial_corr
 
-```
 
-However, this approach does not take into account phylogenetic history and relationships between species, instead assuming all species are independent data points.
 
-### Phylogenetic logistic regressions
-To control for phylogenetic relationships, we ran phylogenetic logistic regression models as described in: Ives, A. R. and T. Garland, Jr. 2010. "Phylogenetic logistic regression for binary dependent variables". Systematic Biology 59:9-26. We used the `phyloglm()` function within the `phylolm` package to do this, with the `method` set to "logistic_MPLE".
-
-We used this method to examine pairs of traits in binary form, as described earlier. 
-
-``` {r phylo logistic regressions}
+## ----phylo logistic regressions----------------------------------------------------------------------------------------
 
 # AIC     logLik Pen.logLik 
 # 91.94     -42.97     -41.25
@@ -1273,35 +1081,9 @@ phyloglm_binary_EHM <- lm_summary_table(phyloglm(EH~M, data=pangenome_lifestyles
 knitr::kable(phyloglm_binary_EHM, 
              caption= "Results from a phylogenetic logistic regression model with species' effect on host as the response variable and species' motility as the explanatory variable.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-Across the phylogeny of 115 species, the phylogenetic logistic regressions suggested that host reliance was significantly correlated with both host location and motility. Both were positive correlations, meaning that species which were obligate were more likely to be intracellular and non-motile, while facultative species were more likely to be extracellular and motile. 
 
-However, host reliance and host location were no longer correlated with effect on host. This suggests that these correlations can be explained by co-ancestry of lifestyle traits, at least when the traits are considered as binary, and the intermediate category removed.
-
-### Summary
-
-Overall, we used several complimentary methods to assess whether our four lifestyle traits were correlated with one another.
-
-We found strong evidence that species' host reliance was correlated with species' host location and species' motility. These two pairs of traits were significantly correlated in all tests we performed, and regardless of whether we included an intermediate category for host location and motility. Species which were obligate, compared to facultative, were more likely to also be intracellular and non-motile, compared to extracelluar and motile. We also found evidence that the distribution of these traits across the phylogeny was not independent, potentially suggesting the host reliance evolves together with host location and motility.
-
-We also found some evidence that species' host reliance and host location were correlated with species' effect on host. We found significant correlations between these two pairs both when asking simply if the traits were correlated, and also when using phylogenetic regressions to account for similarity beetween species due to co-ancestry. However, several methods we used required us to convert the traits into binary variables, meaning we needed to merge species which were only sometimes pathogenic with species which were always pathogenic, and merge species which were sometimes motile with those that were always motile. When we used Pagel's method of correlated evolution and phylogenetic logistic regression models to assess correlations between these binary traits, these two pairs of traits were no longer significantly correlated. 
-
-These correlations across the different lifestyle traits make it hard to determine the underlying causality for pangenome fluidity. Each of the lifestyle traits could lead to less fluid pangenomes directly, or instead only correlate with pangenome fluidity because they are influenced by another trait which directly influences pangenome fluidity. Alternatively, a trait could indirectly influence pangenome fluidity by influencing another lifestyle trait, which then influences pangenome fluidity directly. Phylogenetic correlations alone are unable to distinguish between a huge number of possibilities. 
-
-## Phylogenetic path analysis
-
-We resolved this problem with phylogenetic path analysis. This method is based upon the theory of causal inference, which suggests that while correlation does not equal causation, correlation, if not due to chance, always implies an underlying causal structure. Using a path analysis, one can compare support for multiple hypothesised causal models by constructing a set of phylogenetic linear models which must be supported in order for the model to not be rejected. For example, if A caused both B and C, a linear model could be constructed in which B would no longer correlate with C once A was taken into account. If many variables are included, linear models can be constructed for each causal pathway included in a potential model of causation. Support for any models not rejected can then be compared.
-
-We used this method to infer whether each trait had a direct causal influence on species' pangenome fluidity, or whether instead one or a few traits were the main drivers. 
-
-We coded the lifestyle traits as described previously in section X.X, where 0 corresponds to the lower variability lifestyle (obligate, intracellular, pathogenic, non-motile), 1 corresponds to the higher variability lifestyle (facultative, extracellular, mutualistic, motile), and 0.5 corresponds to species which have an intermediate lifestyle. 
-
-We used the R package `phylopath` for our phylogenetic path analyses.
-
-For a helpful guide on how to get started with phylogenetic path analyses in R, please see: https://ax3man.github.io/phylopath/articles/intro_to_phylopath.html. Please also see Chapter 8 of this book: L. Z. Garamszegi, Modern Phylogenetic Comparative Methods and Their 201 Application in Evolutionary Biology, which provides a great background on the theory of causal inference and its application to phylogenetic comparative methods.
-
-``` {r phylopath set-up}
+## ----phylopath set-up--------------------------------------------------------------------------------------------------
 
 # Rename variables to make it easier to visualise models
 pangenome_lifestyles_no_unknown_nofree<- pangenome_lifestyles_no_unknown_nofree %>%
@@ -1330,13 +1112,9 @@ pangenome_lifestyles_no_unknown_nofree_1 <- pangenome_lifestyles_no_unknown_nofr
                      Motility=="Both"~0.5, 
                      Motility=="Motile"~1))
 
-```
 
-### Simple models with no paths between lifestyle traits 
 
-First we compared a set of simple causal models, which varied by which of the four lifestyle traits had a direct causal influence on pangenome fluidity. These models can be viewed in the following figure. An arrow means that the trait at the beginning of the arrow causes the trait at the end of the arrow. 
-
-``` {r phylopath simple models}
+## ----phylopath simple models-------------------------------------------------------------------------------------------
 # Run set of models which has each of the 4 causing PF, with all combinations of deleted
 
 models_simple <- define_model_set(
@@ -1356,18 +1134,16 @@ models_simple <- define_model_set(
   n = c(PF~EH),
   o = c(PF~M)
 )
-```
 
-``` {r phylopath simple models plot, fig.cap="Set of simple models, varying by which lifestyle traits cause pangenome fluidity", fig.width=8, fig.height=12}
+
+## ----phylopath simple models plot, fig.cap="Set of simple models, varying by which lifestyle traits cause pangenome fluidity", fig.width=8, fig.height=12----
 plot_model_set(models_simple, labels = c(PF="Pangenome\nfluidity",
                 OF="Host\nreliance", IE="Host\nlocation", 
                 EH="Effect\non host", M="Motility"), text_size=3) # Plot all models
 
-```
 
-We then used the `phylo_path()` function to compare support for this set of simple models. We used the default model of evolution, Pagel's lambda, and the default method for the evolution of binary traits (which applies to host reliance only), `"logistic_MPLE"` (maximizes the penalized likelihood of the logistic regression). 
 
-``` {r phylopath simple models results}
+## ----phylopath simple models results-----------------------------------------------------------------------------------
 ## Run path analysis
 result_1 <- phylo_path(models_simple, data=pangenome_lifestyles_no_unknown_nofree_1, tree=dataTree, 
                        model="lambda", method="logistic_MPLE")
@@ -1375,23 +1151,9 @@ result_1 <- phylo_path(models_simple, data=pangenome_lifestyles_no_unknown_nofre
 ## Path analysis results
 s1 <- summary(result_1)
 
-```
 
-We found that all of these simple models were rejected as a plausible model of causation: all had a p-value of <0.001.
 
-A path analysis works by constructing a series of linear models based on the "conditional independencies" assumed by each model’s structure. If a model shows that A causes both B and C, both B and C are said to be conditionally independent from one another. This can be expressed as linear model, where the slope of B~A+C should not be significantly different from zero, because B should no longer correlate with C once the causal influence of A is controlled for. This linear model is a conditional independency; a model examined by a path analysis may have multiple of these, and for each the p-value comparing the slope to zero must be greater than 0.05 for the model to have good support. 
-
-For each of the simple models we examined to be rejected, there must be at least one conditional independency with a p-value of less than 0.05. By having no causal links between the lifestyle traits, we are assuming that all of the traits are conditionally independent of one another: put more simply, that the traits are not correlated with each other once their independent influence on pangenome fluidity is accounted for. However, we found strong evidence that several of the lifestyle traits are themselves correlated in the previous section. 
-
-Therefore, these simple models of causation are rejected because the lifestyle traits themselves are correlated, and their evolution potentially depends on the evolution of another trait(s).
-
-Instead, we need to expand our model choice to allow for causal links between the lifestyle traits themselves. We did this by examining the conditional independencies which were significant in the simple models, adding causal links between those traits. 
-
-### Complex models with paths between lifestyle traits 
-
-We then compared this more complex set of models, which can be seen in the following figure. 
-
-``` {r phylopath complex models}
+## ----phylopath complex models------------------------------------------------------------------------------------------
 models_complex <- define_model_set(
   a = c(),
   b = c(IE~OF),
@@ -1407,17 +1169,15 @@ models_complex <- define_model_set(
   l = c(EH~OF+M, OF~M+IE),
   .common = c(PF~OF+IE+EH+M)
 )
-```
 
-``` {r phylopath complex models plot, fig.cap="Set of more complex models, varying by which lifestyle traits cause pangenome fluidity and how they might cause each other.", fig.width=8, fig.height=12}
+
+## ----phylopath complex models plot, fig.cap="Set of more complex models, varying by which lifestyle traits cause pangenome fluidity and how they might cause each other.", fig.width=8, fig.height=12----
 plot_model_set(models_complex, labels = c(PF="Pangenome\nfluidity",
                 OF="Host\nreliance", IE="Host\nlocation", 
                 EH="Effect\non host", M="Motility"), text_size=2) # Plot all models
-```
 
-We again used a path analysis to compare support for these more complex models. We now found that there were a number of models which had a p-value of >0.05, meaning they cannot be rejected as a plausible model of causation bewteen the variables. 
 
-```{r phylopath complex models results}
+## ----phylopath complex models results----------------------------------------------------------------------------------
 ## Run path analysis
 result_2 <- phylo_path(models_complex, data=pangenome_lifestyles_no_unknown_nofree_1, tree=dataTree, 
                        model="lambda", method="logistic_MPLE")
@@ -1427,28 +1187,22 @@ s2 <- summary(result_2)
 s2_subset <- s2 %>% select(w,p,CICc)
 
 knitr::kable(s2_subset, caption="Comparison of set of more complex causal models, varying by which lifestyle trait(s) directly influence pangenome fluidity and how they might cause each other.", digits = 4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-We can then view support for the models by comparing their value of *w* which is a measure of model support based on the *C* statistic Information Criteria (CIC), which is itself a modified version of Akaike Information Criteria (AIC) for comparing model support. A higher *w* value means the model has higher support. 
 
-```{r phylopath complex models results plot, fig.cap="Comparing model support for set of more complex models of causation between four lifestyle traits and pangenome fluidity. Models are ordered by their value of `w`, a measure of model support, and numbers on the bars correspond to overall p-values of the model.", fig.width=8, fig.height=8}
+## ----phylopath complex models results plot, fig.cap="Comparing model support for set of more complex models of causation between four lifestyle traits and pangenome fluidity. Models are ordered by their value of `w`, a measure of model support, and numbers on the bars correspond to overall p-values of the model.", fig.width=8, fig.height=8----
 plot(s2)
-```
 
-We can see that two models, i and j, have particularly high values of `w`, meaning strong support. Their bars are coloured red because they are within 2CICs of one another, indicating they have a similar level of support. These models are identical except for the direction of causation between species' effect on host and motility.
 
-``` {r phylopath complex models i and j, fig.cap="The two models of causation with highest support, model i (first panel) and model j (second panel)"}
+## ----phylopath complex models i and j, fig.cap="The two models of causation with highest support, model i (first panel) and model j (second panel)"----
 i <- plot(models_complex$i) #plot single model 
 j <- plot(models_complex$j) #plot single model 
 
 i_j <- i + j
 
 i_j
-```
 
-Therefore, the model of causation with the best support is an average of models i and j, which can be viewed below. 
 
-``` {r phylopath complex models best model, fig.cap="Average best model of causation between four lifestyle traits and pangenome fluidiy"}
+## ----phylopath complex models best model, fig.cap="Average best model of causation between four lifestyle traits and pangenome fluidiy"----
 # Two methods for averaging models: "conditional" and "full".
 # The methods differ in how they deal with averaging a path coefficient where the path is absent in some of the models. 
 # The full method sets the coefficient (and the variance) for the missing paths to zero, 
@@ -1466,25 +1220,15 @@ plot(average_model_2_conditional, curvature = 0.1, algorithm="dh", type="width",
      labels = c(IE="Host\nlocation", OF="Host\nreliance",
                 PF="Pangenome\nfluidity", EH="Effect\non host", M="Motility"),
      box_x=25, box_y=15, text_size=3) 
-```
 
-The numbers next to each path correspond to standardized correlation coefficients. This can give an idea of the strength of inferred causation for each path, relative to the other causal links in the model. All the values are positive, meaning that all the paths correspond to an increase in one variable causing an increase in another variable.
 
-We can also view the confidence intervals for each of these coefficients.
-
-``` {r phylopath complex models coeffs, fig.cap="Path coeeficients for the average best model, with 95% confidence intervals."}
+## ----phylopath complex models coeffs, fig.cap="Path coeeficients for the average best model, with 95% confidence intervals."----
 coef_plot(average_model_2_conditional, reverse_order = TRUE) + 
   ggplot2::coord_flip() + 
   ggplot2::theme_bw()
-```
 
-If the confidence interval does not overlap zero, that means the standardized correlation coefficient is significant to p=0.05 or less. Some of the paths do overlap zero, suggesting weaker support for these paths. 
 
-### Deletion to the minimal model
-
-We then explored whether the model had better support if one or more of these paths were removed by using a process known as deletion to the minimal model. To do this, we compared a set of models which each had one of the paths removed. We did this for models i and j separately, and also together. 
-
-``` {r phylopath model deletion}
+## ----phylopath model deletion------------------------------------------------------------------------------------------
 
 ## Now, to arrive at final best model, want to do deletion to the minimal model.
 # This asks if removing any one path improves the model fit.
@@ -1526,11 +1270,9 @@ result_4 <- phylo_path(models_deletion_j, data=pangenome_lifestyles_no_unknown_n
 s3 <- summary(result_3)
 
 s4 <- summary(result_4)
-```
 
-We found that for both models i and j, the original model had the best support. This means that even though some paths have lower support, the model as a whole has best support when all paths are included.
 
-``` {r phylopath model deletion i results plot, fig.cap="Models each with a path deleted from original (model i) and comparison of support."}
+## ----phylopath model deletion i results plot, fig.cap="Models each with a path deleted from original (model i) and comparison of support."----
 i_deletion_models <- plot_model_set(models_deletion_i,labels = c(PF="Pangenome\nfluidity",
                 OF="Host\nreliance", IE="Host\nlocation", 
                 EH="Effect\non host", M="Motility"), text_size=3)
@@ -1539,9 +1281,9 @@ i_deletion_comparison <- plot(s3)
 
 i_deletion <- i_deletion_models + i_deletion_comparison + plot_layout(ncol=1)
 
-```
 
-``` {r phylopath model deletion j results plot, fig.cap="Models each with a path deleted from original (model j) and comparison of support."}
+
+## ----phylopath model deletion j results plot, fig.cap="Models each with a path deleted from original (model j) and comparison of support."----
 j_deletion_models <- plot_model_set(models_deletion_j, labels = c(PF="Pangenome\nfluidity",
                 OF="Host\nreliance", IE="Host\nlocation", 
                 EH="Effect\non host", M="Motility"), text_size=3)
@@ -1550,11 +1292,9 @@ j_deletion_comparison <- plot(s4)
 
 j_deletion <- j_deletion_models + j_deletion_comparison + plot_layout(ncol=1)
 
-```
 
-We also compared models i and j, and the models with each of the paths deleted, together within one analysis.
 
-``` {r phylopath model deletion i and j together}
+## ----phylopath model deletion i and j together-------------------------------------------------------------------------
 ## Also combine them together - see whether i and j still the best
 models_deletion_ij <- define_model_set(
   i = c(PF~OF+IE+EH+M, M~EH, OF~EH+M+IE), # original 
@@ -1584,15 +1324,13 @@ result_5 <- phylo_path(models_deletion_ij, data=pangenome_lifestyles_no_unknown_
 
 ## Path analysis results
 s5 <- summary(result_5)
-```
 
-``` {r phylopath model deletion i and j together plot, fig.cap="Comparison of support for models i and j, and versions each with one path deleted."}
+
+## ----phylopath model deletion i and j together plot, fig.cap="Comparison of support for models i and j, and versions each with one path deleted."----
 plot(s5)
-```
 
-When we considered models i, j, and all versions of i and j with one path deleted, we found there were seven models which were supported to within 2 CICs of one another. Model j had the highest support, with model n second, i in third and d in fourth. Model n is identical to model j, and model d is identical to model i, except that both have the M->PF path removed. This was the path with the lowest standardised coefficient value, suggesting slightly less support for this path than the direct paths to pangenome fluidity from the other lifestyle traits. However, the best model is still one in which all four lifestyle traits have a direct influence on pangenome fluidity.
 
-``` {r phylopath model deletion i and j together average conditional, fig.cap="Average best model, combining models i and j, along with 5 models with one oath deleted."}
+## ----phylopath model deletion i and j together average conditional, fig.cap="Average best model, combining models i and j, along with 5 models with one oath deleted."----
 ## Plot average best model
 average_model_5_conditional <- average(result_5, avg_method = "conditional") #default
 
@@ -1602,13 +1340,9 @@ plot(average_model_5_conditional, curvature = 0.1, algorithm="dh", type="width",
                 PF="Pangenome\nfluidity", EH="Effect\non host", M="Motility"),
      box_x=25, box_y=15, text_size=3) 
 
-```
 
-## Phylogentic path analysis with merged intermediate category
 
-In our main path analysis above we included an intermediate catgeory for three of the lifestyle traits. However, for some of our phylogenetic regressions we merged species in these intermediate categories with one of the other two to create binary lifestyle variables. To test the robustness of our results, repeated the above analyses but with binary lifestyle variables.
-
-``` {r additional lifestyle path binary - set up}
+## ----additional lifestyle path binary - set up-------------------------------------------------------------------------
 # Code single lifestyle variable
 pangenome_lifestyles_no_unknown_nofree_2 <- pangenome_lifestyles_no_unknown_nofree %>%
   mutate(OF=case_when(Obligate_facultative=="Obligate"~0,
@@ -1622,11 +1356,9 @@ pangenome_lifestyles_no_unknown_nofree_2 <- pangenome_lifestyles_no_unknown_nofr
          M=case_when(Motility=="Non-motile" ~0, 
                      Motility=="Both"~1, 
                      Motility=="Motile"~1))
-```
 
-As in our main analysis, we found that all of the additional simple models, with no paths between lifestyle traits, were rejected (their p-values were all less than 0.05)
 
-``` {r additional lifestyle path binary simple models results}
+## ----additional lifestyle path binary simple models results------------------------------------------------------------
 ## Run path analysis
 result_1b <- phylo_path(models_simple, data=pangenome_lifestyles_no_unknown_nofree_2, tree=dataTree, 
                        model="lambda", method="logistic_MPLE")
@@ -1634,12 +1366,9 @@ result_1b <- phylo_path(models_simple, data=pangenome_lifestyles_no_unknown_nofr
 ## Path analysis results
 s1b <- summary(result_1b)
 
-```
 
-As in the previous analysis, we then conducted a path analysis using a more complex set of models, allowing paths between the lifestyle traits. 
 
-We found that of these, a single model, model d, had the best support. This model and its correlation coefficients can be viewed in the figures below.
-``` {r additional lifestyle path binary complex models}
+## ----additional lifestyle path binary complex models-------------------------------------------------------------------
 models_complex <- define_model_set(
   a = c(),
   b = c(IE~OF),
@@ -1655,9 +1384,9 @@ models_complex <- define_model_set(
   l = c(EH~OF+M, OF~M+IE),
   .common = c(PF~OF+IE+EH+M)
 )
-```
 
-```{r additional lifestyle path binary complex models results}
+
+## ----additional lifestyle path binary complex models results-----------------------------------------------------------
 ## Run path analysis
 result_2b <- phylo_path(models_complex, data=pangenome_lifestyles_no_unknown_nofree_2, tree=dataTree, 
                        model="lambda", method="logistic_MPLE")
@@ -1667,13 +1396,13 @@ s2b <- summary(result_2b)
 s2b_subset <- s2b %>% select(w,p,CICc)
 
 knitr::kable(s2b_subset, caption="Comparison of set of more complex causal models, varying by which lifestyle trait(s) directly influence pangenome fluidity and how they might cause each other.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-```{r additional lifestyle path binary complex models results plot, fig.cap="Comparing model support for set of more complex models of causation between four lifestyle traits and pangenome fluidity. Models are ordered by their value of `w`, a measure of model support, and numbers on the bars correspond to overall p-values of the model.", fig.width=8, fig.height=8}
+
+## ----additional lifestyle path binary complex models results plot, fig.cap="Comparing model support for set of more complex models of causation between four lifestyle traits and pangenome fluidity. Models are ordered by their value of `w`, a measure of model support, and numbers on the bars correspond to overall p-values of the model.", fig.width=8, fig.height=8----
 plot(s2b)
-```
 
-``` {r additional lifestyle path binary complex models best model, fig.cap="Average best model of causation between four lifestyle traits and pangenome fluidity."}
+
+## ----additional lifestyle path binary complex models best model, fig.cap="Average best model of causation between four lifestyle traits and pangenome fluidity."----
 # Two methods for averaging models: "conditional" and "full".
 # The methods differ in how they deal with averaging a path coefficient where the path is absent in some of the models. 
 # The full method sets the coefficient (and the variance) for the missing paths to zero, 
@@ -1691,17 +1420,9 @@ plot(average_model_2b, curvature = 0.1, algorithm="dh", type="width",
      labels = c(IE="Host\nlocation", OF="Host\nreliance",
                 PF="Pangenome\nfluidity", EH="Effect\non host", M="Motility"),
      box_x=25, box_y=15, text_size=3) 
-```
 
-In the average best model from our main analysis, we found evidence that host reliance was influenced by the other three lifestyle traits. 
 
-In this analysis, where we merged the intermediate category to convert those three traits into binary traits, the model with the best support included paths between host reliance and the other three lifestyle traits, but in the opposite direction as the model in our main analysis. 
-
-This provides further evidence that the lifestyle traits are correlated in a manner suggesting that they are coevolving, since a relatively small change of how to code the lifestyle trait can change the direction of influence between pairs of traits.
-
-Finally, we repeated the model deletion step, as in our main analysis. 
-
-``` {r additional lifestyle path binary model deletion}
+## ----additional lifestyle path binary model deletion-------------------------------------------------------------------
 
 ## Now, to arrive at final best model, want to do deletion to the minimal model.
 # This asks if removing any one path improves the model fit.
@@ -1725,35 +1446,29 @@ result_3b <- phylo_path(models_deletion_d, data=pangenome_lifestyles_no_unknown_
 ## Path analysis results
 s3b <- summary(result_3b)
 
-```
 
-``` {r additional lifestyle path binary model deletion d models, fig.cap="Models each with a path deleted from original (model d).", fig.height=12}
+
+## ----additional lifestyle path binary model deletion d models, fig.cap="Models each with a path deleted from original (model d).", fig.height=12----
 plot_model_set(models_deletion_d, labels = c(PF="Pangenome\nfluidity",
                 OF="Host\nreliance", IE="Host\nlocation", 
                 EH="Effect\non host", M="Motility"), text_size=3)
 
-```
 
-```{r additional lifestyle path binary complex models results table}
+
+## ----additional lifestyle path binary complex models results table-----------------------------------------------------
 
 ## Path analysis results
 s3b_subset <- s3b %>% select(w,p,CICc)
 
 knitr::kable(s3b_subset, caption="Comparison of support for set of models each with a path deleted from original (model d).", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r additional lifestyle path binary model deletion d results plot, fig.cap="Comparison of support for set of models each with a path deleted from original (model d)."}
+
+## ----additional lifestyle path binary model deletion d results plot, fig.cap="Comparison of support for set of models each with a path deleted from original (model d)."----
 plot(s3b)
 
-```
 
-As in our main analysis, we found that the best model was the original model, with no paths deleted. We found that two additional models had support of within 2 CICs of model d. Model e has the path from motility to pangenome fluidity deleted, while model b has the path from host location to pangenome fluidity deleted. This suggests that these paths have weaker support, but that the model is still best when they are included. 
 
-We can plot a best model from this analysis where all lifestyle traits are coded as binary, by averaging the three models within 2 CICs of each other, as in the above figure. 
-
-This gives the model below. 
-
-``` {r additional lifestyle path binary model deletion d average best model, fig.cap="Average of three best models following model deletion, for analysis with all lifestyle traits coded as binary variables."}
+## ----additional lifestyle path binary model deletion d average best model, fig.cap="Average of three best models following model deletion, for analysis with all lifestyle traits coded as binary variables."----
 ## Plot average best model
 average_model_3b <- average(result_3b, avg_method = "conditional") #default
 
@@ -1763,32 +1478,9 @@ plot(average_model_3b, curvature = 0.1, algorithm="dh", type="width",
                 PF="Pangenome\nfluidity", EH="Effect\non host", M="Motility"),
      box_x=25, box_y=15, text_size=3) 
 
-```
 
-Considering these results together with the average best model from our main analysis, we find strong evidence that multiple aspects of bacterial lifestyle together influence variation in pangenome fluidity across species. Additionally, we find evidence that the lifestyle traits themselves influence the evolution of each other. The direction of how each influences the other appears dependent on how we code our lifestyle traits (for example, whether we include an intermediate category or treat each trait as binary). However, which pairs of traits were linked by paths between the traits were generally very similar between the two models. This provides further evidence that the traits are co-evolving with one another, likely both influencing the evolution of each other. 
 
-For example, the transition from a facultative extracellular host-associated lifestyle to an obligate intracellular lifestyle involves both an increase in frequency of living inside cells, and also a increase in the dependency of the bacteria on its host(s). We find evidence that these likely interact and influence one another as they increase. 
-
-## Summary 
-
-Overall, we find evidence that each of the four lifestyle traits we examined has a direct influence on a species' pangenome fluidity. Specifically, we find that species which are facultatively host reliant, live outside host cells, are mutualists and are motile have a higher pangenome fluidity compared to species which are obligately host-asociated, live inside host cells, are pathogens and are non-motile. 
-
-These correlations are likely because each of these lifestyles influences the variety of genes available for individuals of a species to acquire, and also the variety of environments individuals of a species will encounter and need different sets of genes to live in. Therefore, multiple bacterial lifestyle traits influence pangenome fluidity because they influence rates of gene gain and loss across individual bacteria of a species.
-
-# What about other factors in addition to lifestyle: genome size and effective population size?
-
-Two additional factors correlate with pangenome fluidity, which are not lifestyle traits but instead genome characteristics: genome size and effective population size. Species with larger genome sizes and larger effective population sizes are predicted to have higher pangenome fluidity. 
-
-Genome size could influence genome fluidity by limiting the number of genes which can vary across individuals of the same species: each species has a set of core genes which all individuals need to survive, so if the genome size is not much bigger than this number, the average proportion of genes which differs between individuals will be low, meaning pangenome fluidity will be low. 
-
-Effective population size, which measures the number of individuals in the current generation which will leave descendants in a distant generation, is important for how genes spread across generations. Genetic drift has a larger influence in species with low effective population sizes, reducing the chances that genes with small but beneficial genes will spread, while also slowing down the rate that genes which are slightly deleterious, such as those no longer required, will be purged from the population. Together, this could influence genome fluidity by limiting any local adaptation of subpopulations of a species in a particular environment, meaning pNgenome fluidity is reduced. 
-
-## Genome size and effective population size correlate with pangenome fluidity
-First, we examined whether both variables were correlated with pangenome fluidity across our species. 
-
-We calculated the mean number of genes in genomes of all 126 species in our dataset as a measure of genome size. We found that, as predicted and as has been observed previously, that species with larger genomes had higher pangenome fluidity. 
-
-``` {r Genome size vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE}
+## ----Genome size vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE------------------------------------------------
 mcmc_model_9 <- MCMCglmm(pangenome_fluidity ~ genome_size, random=~Species, data=pangenome_lifestyles,
                           nitt=50000,
                           prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
@@ -1810,9 +1502,9 @@ rownames(R2_table_9) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_9) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_9),R2_table_9), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, genome size as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r Genome size vs pangenome fluidity plot, fig.cap="Plot showing correlation between a species' average number of genes in their genomes and their pangenome fluidity. The line is the slope and intercept from the MCMCglmm analysis in the above table. N=126"}
+
+## ----Genome size vs pangenome fluidity plot, fig.cap="Plot showing correlation between a species' average number of genes in their genomes and their pangenome fluidity. The line is the slope and intercept from the MCMCglmm analysis in the above table. N=126"----
 ggplot(pangenome_lifestyles, aes(x=genome_size,y=pangenome_fluidity)) +
   geom_point(colour="black") +
   labs(y="Pangenome\nfluidity", x="Genome size \n(number of genes)") +
@@ -1824,12 +1516,9 @@ ggplot(pangenome_lifestyles, aes(x=genome_size,y=pangenome_fluidity)) +
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         axis.text.y = element_blank(),
         legend.position = "none")
-```
 
-We used previously calculated estimates of effective population size, available for 77 of our species, which were based on dN/dS ratios in a set of universal genes (L.M. Bobay, H. Ochman, Factors driving effective population size and pan-genome evolution in bacteria. BMC Evolutionary Biology. 18, 153 (2018)). 
-We found that, as predicted and as has been found previously, species with larger effective population sizes had higher pangenome fluidity. 
 
-``` {r effective pop size vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE}
+## ----effective pop size vs pangenome fluidity MCMCglmm, echo=FALSE, cache=TRUE-----------------------------------------
 ## Make Ne on scale easier for stats programs - can be complain if numbers too large
 # Divide Ne by 1,000,000 to get value per 1 million.
 pangenome_lifestyles$Ne_small <- pangenome_lifestyles$Ne/1000000
@@ -1863,9 +1552,9 @@ colnames(R2_table_10) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_10),R2_table_10), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, effective population size as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-``` {r effective pop size vs pangenome fluidity plot, fig.cap="Plot showing correlation between a species' effective population size and their pangenome fluidity. The line is the slope and intercept of the MCMCglmm analysis in the above table. N=77."}
+
+## ----effective pop size vs pangenome fluidity plot, fig.cap="Plot showing correlation between a species' effective population size and their pangenome fluidity. The line is the slope and intercept of the MCMCglmm analysis in the above table. N=77."----
 ggplot(pangenome_lifestyles_no_unknown_ne, aes(x=Ne_small,y=pangenome_fluidity)) +
   geom_point() +
   labs(y="Pangenome\nfluidity", x="Effective population size \n(millions)") +
@@ -1877,16 +1566,9 @@ ggplot(pangenome_lifestyles_no_unknown_ne, aes(x=Ne_small,y=pangenome_fluidity))
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         axis.text.y = element_blank(),
         legend.position = "none")
-```
 
-## Phylogenetic path analysis
-It is unclear whether the correlation between both factors and pangenome fluidity is because each is directly influencing pangenome fluidity, or because some other factor is influencing one or both. Lifestyle could be important, potentially influencing both factors, and so may also explain why such factors correlate with pangenome fluidity.
 
-To examine this, we used phylogenetic path analysis to investigate which of lifestyle, genome size and effective population size are most important for causing changes in genome fluidity. We did this for the 75 species for which we had data on effective population sizes and also all four lifestyle traits.
-
-To characterise species’ lifestyle, we combined our four within-host lifestyle traits into one variable. In our main analyses, we did this by coding the category with the lowest lifestyle variability as 0 and the category with highest as 1. For those with ‘both’ categories, we coded this as 0.5. We then summed these four values for each species, giving a single measure of lifestyle variability. The variable had a minimum value of 0, which would correspond to an obligate, intracellular, pathogenic, non-motile species, predicted to have the least variable lifestyle. Conversely, the maximum value of the variable is 4, corresponding to a facultative, extracellular, mutualistic, motile species, which would have the most variable lifestyle.
-
-``` {r NE/GS/LS path analysis set up}
+## ----NE/GS/LS path analysis set up-------------------------------------------------------------------------------------
 pangenome_lifestyles_no_unknown_nofree_ne <- pangenome_lifestyles %>%
   filter(Host_or_free != "Unknown") %>% filter(Host_or_free != "Free") %>%
   filter(Obligate_facultative != "Unknown") %>% filter(Effect_on_host != "Unknown") %>%
@@ -1917,11 +1599,9 @@ pangenome_lifestyles_no_unknown_nofree_ne_1 <- pangenome_lifestyles_no_unknown_n
 
 pangenome_lifestyles_no_unknown_nofree_ne_1 <- pangenome_lifestyles_no_unknown_nofree_ne_1 %>%
   mutate(LS = OF+IE+EH+M)
-```
 
-This single lifestyle variable was significantly correlated with pangenome fluidity. 
 
-``` {r LS vs pangenome fludity MCMCglmm, echo=FALSE, cache=TRUE}
+## ----LS vs pangenome fludity MCMCglmm, echo=FALSE, cache=TRUE----------------------------------------------------------
 mcmc_model_LS <- MCMCglmm(PF ~ LS, random=~Species, data=pangenome_lifestyles_no_unknown_nofree_ne_1,
                           nitt=50000,
                           prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
@@ -1951,9 +1631,9 @@ rownames(R2_table_LS) <- c("Fixed effect", "Random effect", "Total model")
 colnames(R2_table_LS) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_LS),R2_table_LS), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, lifestyle vairability as the fixed effect, and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r LS vs pangenome fluidity plot, fig.cap="Plot showing correlation between lifestyle as a single variable and species' pangenome fluidity. The line is the slope and intercept from the MCMCglmm analysis in the table above.", fig.height=5}
+
+## ----LS vs pangenome fluidity plot, fig.cap="Plot showing correlation between lifestyle as a single variable and species' pangenome fluidity. The line is the slope and intercept from the MCMCglmm analysis in the table above.", fig.height=5----
 ggplot(pangenome_lifestyles_no_unknown_nofree_ne_1, aes(x=LS,y=PF)) +
   geom_point(colour="black") +
   labs(y="Pangenome \nfluidity", x="Lifestyle") +
@@ -1962,14 +1642,9 @@ ggplot(pangenome_lifestyles_no_unknown_nofree_ne_1, aes(x=LS,y=PF)) +
   theme_classic() +
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5))
-```
 
-### Simple models with no paths between the three factors
-We first compared a set of simple models, with no links between the three potential causal factors Instead, we varied only whether each of the three factors had a direct influence on pangenome fluidity.
 
-We again used `phylo_path()` function to compare support for this set of simple models. In this analysis we used the Brownian Motion model of evolution, since the models had the highest support with this model of evolution, and the default method for the evolution of binary traits (which applies to host assocation only), `"logistic_MPLE"` (maximizes the penalized likelihood of the logistic regression).
-
-``` {r NE/GS/LS path analysis simple models}
+## ----NE/GS/LS path analysis simple models------------------------------------------------------------------------------
 models_LS_GS_NE_simple <- define_model_set(
   a = c(PF~LS+GS+NE),
   b = c(PF~LS+NE),
@@ -1980,14 +1655,14 @@ models_LS_GS_NE_simple <- define_model_set(
   g = c(PF~NE)
 )
 
-```
 
-``` {r NE/GS/LS path analysis simple models plot, fig.cap="Set of simple models, varying by which of lifestyle, effective population size and genome size causes pangenome fluidity.", fig.width=8, fig.height=8}
+
+## ----NE/GS/LS path analysis simple models plot, fig.cap="Set of simple models, varying by which of lifestyle, effective population size and genome size causes pangenome fluidity.", fig.width=8, fig.height=8----
 plot_model_set(models_LS_GS_NE_simple, labels = c(LS="Lifestyle", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=4) # Plot all models
-```
 
-``` {r NE/GS/LS path analysis simple models results} 
+
+## ----NE/GS/LS path analysis simple models results----------------------------------------------------------------------
 ## Run path analysis
 ## This time Brownian Motion is the model of evolution where the models have highest support..
 result_6 <- phylo_path(models_LS_GS_NE_simple, data=pangenome_lifestyles_no_unknown_nofree_ne_1,
@@ -2000,38 +1675,29 @@ s6 <- summary(result_6)
 ## Plot average best model
 best_model_6_conditional <- best(result_6) 
 
-```
 
-We found that a single model had the highest support. This model (model c) includes a direct causal influence of lifestyle and genome size on pangenome fluidity, but not effective population size. Three models were rejected as possible models of causation, meaning they had a p-value of less than 0.05. These were the three models which did not include a direct influence of lifestyle on pangenome fluidity.
 
-``` {r NE/GS/LS path analysis simple models results table}
+## ----NE/GS/LS path analysis simple models results table----------------------------------------------------------------
 ## Path analysis results
 s6_subset <- s6 %>% select(w,p,CICc)
 
 knitr::kable(s6_subset, caption="Details of of support for a simple set of models varying by which of lifestyle, effective population size and genome size causes pangenome fluidity.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r NE/GS/LS path analysis simple models results plot, fig.cap="Comparison of support for a simple set of models varying by which of lifestyle, effective population size and genome size causes pangenome fluidity."}
+
+## ----NE/GS/LS path analysis simple models results plot, fig.cap="Comparison of support for a simple set of models varying by which of lifestyle, effective population size and genome size causes pangenome fluidity."----
 # Single model is the best - model c.
 # This has GS->GF and LS->GF, but not NE->GF
 plot(s6)
-```
 
-``` {r NE/GS/LS path analysis simple models best model, fig.cap="Model with best support, out of a set of simple models. "}
+
+## ----NE/GS/LS path analysis simple models best model, fig.cap="Model with best support, out of a set of simple models. "----
 ## Plot average best models
 plot(best_model_6_conditional, curvature = 0.1, type="width", 
      labels = c(LS="Lifestyle", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=4) 
-```
 
-However, effective population size still clearly correlates with genome fluidity, suggesting there is some unresolved causal structure. This could be due to indirect links between the three traits, for example by lifestyle also causing effective population size variation. 
 
-### Complex models with paths between the three factors
-To explore this, we compared a more complex set of models, allowing for potential links between the three factors. Paths we included and tested were: Lifestyle->Eff pop size, Lifestyle-> genome size, and Eff pop size->genome size; each of these are biologically plausible and could explain why effective population size is correlated with both factors, in addition to genome fluidity. 
-
-We compared this set of models, varying the inclusion of each of these paths in addition to the simple models in Figure S25.
-
-``` {r NE/GS/LS path analysis complex models}
+## ----NE/GS/LS path analysis complex models-----------------------------------------------------------------------------
 # The factors may themselves be connected - we can explore this.
 models_LS_GS_NE_complex <- define_model_set(
   a = c(PF~LS+GS+NE),
@@ -2050,14 +1716,14 @@ models_LS_GS_NE_complex <- define_model_set(
   n = c(PF~LS+GS, GS~LS, GS~NE)
 )
 
-```
 
-``` {r NE/GS/LS path analysis complex models plot, fig.cap="Set of simple and more complex models, varying by which of lifestyle, effective population size and genome size causes pangenome fluidity, and also how those factors might influence each other.", fig.width=8, fig.height=8}
+
+## ----NE/GS/LS path analysis complex models plot, fig.cap="Set of simple and more complex models, varying by which of lifestyle, effective population size and genome size causes pangenome fluidity, and also how those factors might influence each other.", fig.width=8, fig.height=8----
 plot_model_set(models_LS_GS_NE_complex, labels = c(LS="Lifestyle", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=4) # Plot all models
-```
 
-``` {r NE/GS/LS path analysis complex models results}
+
+## ----NE/GS/LS path analysis complex models results---------------------------------------------------------------------
 ## This time Brownian Motion is a better model of evolution.
 result_7 <- phylo_path(models_LS_GS_NE_complex, data=pangenome_lifestyles_no_unknown_nofree_ne_1, tree=dataTree, 
                        model="BM", method="logistic_MPLE")
@@ -2065,18 +1731,16 @@ result_7 <- phylo_path(models_LS_GS_NE_complex, data=pangenome_lifestyles_no_unk
 ## Path analysis results
 s7 <- summary(result_7)
 
-```
 
-Of these models, four had high and similar support (within 2CICs of each other). The best was model n, which was similar to model c but also with NE->GS and LS->GS. The second best, model l, is identical except it has no NE->GS.
 
-``` {r NE/GS/LS path analysis complex models results table}
+## ----NE/GS/LS path analysis complex models results table---------------------------------------------------------------
 ## Path analysis results
 s7_subset <- s7 %>% select(w,p,CICc)
 
 knitr::kable(s7_subset, caption="Comparison of set of more complex causal models, varying by which of lifestyle, genome size and effective population size directly influence pangenome fluidity, and how they might cause each other.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r NE/GS/LS path analysis complex models results average models}
+
+## ----NE/GS/LS path analysis complex models results average models------------------------------------------------------
 # Four models have high support (within 2CICs)
 # Model c, from result 6, has 3rd highest support.
 # Top is model n, which has LS->GS and NE->GS, in addition to LS->GF and GS->GF.
@@ -2086,46 +1750,30 @@ plot(s7)
 ## Plot average best model
 average_model_7_conditional <- average(result_7, avg_method = "conditional") 
 average_model_7_full <- average(result_7, avg_method = "full") 
-```
 
-We then averaged these four models together. This gives the overall best model, shown in the below figure. This was the basis for Figure 4 in the main text. 
 
-``` {r NE/GS/LS path analysis complex models best conditional, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure. This is the same model as Figure 4 in the main text."  }
+## ----NE/GS/LS path analysis complex models best conditional, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure. This is the same model as Figure 4 in the main text."----
 ## Plot average best models
 # Suggests lifestyle is most important - has the largest direct impact on GF an causes other two factors.
 # Effective population size has minor role - and no direct causal impact on GF.
 plot(average_model_7_conditional, curvature = 0.1, algorithm="dh", type="width", 
      labels = c(LS="Lifestyle", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=3) 
-```
 
-We can also view the 95% confidence intervals for each of the  path coefficients in this average best model. 
-``` {r NE/GS/LS path analysis complex models coeffs, fig.cap="Path coeficients for the average best model, with 95% confidence intervals.", fig.height=5}
+
+## ----NE/GS/LS path analysis complex models coeffs, fig.cap="Path coeficients for the average best model, with 95% confidence intervals.", fig.height=5----
 coef_plot(average_model_7_conditional, reverse_order = TRUE) + 
   ggplot2::coord_flip() + 
   ggplot2::theme_bw()
-```
 
-We can also examine this result by setting a path's standardised correlation coefficient to zero if it is not in present in one of the four models with similar support. This weighs the value of the coefficient by how often it is present. This does not affect the paths from genome size and lifestyle to pangenome fluidity, since they are present in all four models. However, it does reduce the size of the correlation coefficients for the remaining paths, particularly those factors influencing and that are influenced by effective population size. This provides further evidence that the influence of lifestyle and genome size on pangenome fluidity are the most important paths in the model. 
 
-We present the result without these weightings in the main text, in order to report the original correlation coefficient values, but include this here for further detail.
-
-``` {r NE/GS/LS path analysis complex models best full,fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure, with correlation coefficients weighted by setting absent paths to zero when averaging models."}
+## ----NE/GS/LS path analysis complex models best full,fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure, with correlation coefficients weighted by setting absent paths to zero when averaging models."----
 plot(average_model_7_full, curvature = 0.1, algorithm="dh", type="width", 
      labels = c(LS="Lifestyle", GS="Genome\nsize",
                 PF="Pangenome\nfluidity", NE="Eff. pop\nsize"), text_size=3) 
-```
 
 
-## Other measures of lifestyle
-
-Next, we explored whether these results were robust to other features and/or measures of lifestyle. We did this in several ways.
-
-### Single lifestyle trait but with merged intermediate category
-
-First, we did the same analysis but coded the single lifestyle trait slightly differently. For three of our lifestyle traits we had an intermediate category we coded as 0.5 for that trait. Here, we combined species in this intermediate category with species in one of the other two categeories to create a binary variable, as we did for some of the phylogenetic regression analyses.
-
-``` {r additional path - binary lifestyle set up}
+## ----additional path - binary lifestyle set up-------------------------------------------------------------------------
 #### Code single lifestyle variable
 pangenome_lifestyles_no_unknown_nofree_ne_2 <- pangenome_lifestyles_no_unknown_nofree_ne %>%
   mutate(OF=case_when(Obligate_facultative=="Obligate"~0,
@@ -2142,11 +1790,9 @@ pangenome_lifestyles_no_unknown_nofree_ne_2 <- pangenome_lifestyles_no_unknown_n
 
 pangenome_lifestyles_no_unknown_nofree_ne_2 <- pangenome_lifestyles_no_unknown_nofree_ne_2 %>%
   mutate(LS = OF+IE+EH+M)
-```
 
-This alternative single lifestyle variable was also significantly correlated with pangenome fluidity. 
 
-``` {r binary LS vs pangenome fludity MCMCglmm, echo=FALSE, cache=TRUE}
+## ----binary LS vs pangenome fludity MCMCglmm, echo=FALSE, cache=TRUE---------------------------------------------------
 mcmc_model_LS_binary <- MCMCglmm(PF ~ LS, random=~Species, data=pangenome_lifestyles_no_unknown_nofree_ne_2,
                           nitt=50000,
                           prior=prior, ginverse = list(Species = Ainv),verbose = FALSE)
@@ -2171,9 +1817,9 @@ rownames(R2_table_LS_binary) <- c("Fixed effect", "Random effect", "Total model"
 colnames(R2_table_LS_binary) <- c("R-squared value")
 
 knitr::kable(list(summary_mcmc_glmm(mcmc_model_LS_binary),R2_table_LS_binary), caption="Results from a MCMCglmm with pangenome fluidity as the response variable, lifestyle vairability as the fixed effect (calculated with no intermediate/both category), and phylogeny as a random effect.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r binary LS vs pangenome fluidity plot, fig.cap="Plot showing correlation between lifestyle as a single variable (calculated with no intermediate/both category) and species' pangenome fluidity. The line is the slope and intercept from the MCMCglmm analysis in the table above."}
+
+## ----binary LS vs pangenome fluidity plot, fig.cap="Plot showing correlation between lifestyle as a single variable (calculated with no intermediate/both category) and species' pangenome fluidity. The line is the slope and intercept from the MCMCglmm analysis in the table above."----
 ggplot(pangenome_lifestyles_no_unknown_nofree_ne_2, aes(x=LS,y=PF)) +
   geom_point(colour="black") +
   labs(y="Pangenome \nfluidity", x="Lifestyle") +
@@ -2182,9 +1828,9 @@ ggplot(pangenome_lifestyles_no_unknown_nofree_ne_2, aes(x=LS,y=PF)) +
   theme_classic() +
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5))
-```
 
-``` {r additional path - binary lifestyle simple models results} 
+
+## ----additional path - binary lifestyle simple models results----------------------------------------------------------
 ## Run path analysis
 ## This time Brownian Motion is the model of evolution where the models have highest support..
 result_8 <- phylo_path(models_LS_GS_NE_simple, data=pangenome_lifestyles_no_unknown_nofree_ne_2,
@@ -2194,32 +1840,28 @@ result_8 <- phylo_path(models_LS_GS_NE_simple, data=pangenome_lifestyles_no_unkn
 ## Path analysis results
 s8 <- summary(result_8)
 
-```
 
-``` {r additional path - binary lifestyle simple models results table}
+
+## ----additional path - binary lifestyle simple models results table----------------------------------------------------
 ## Path analysis results
 s8_subset <- s8 %>% select(w,p,CICc)
 
 knitr::kable(s8_subset, caption="Details of of support for a simple set of models varying by which of lifestyle, effective population size and genome size causes pangenome fluidity.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r additional path - binary lifestyle simple models results plot, fig.cap="Comparison of support for a simple set of models varying by which of lifestyle (calculated with no intermediate/both category), effective population size and genome size causes pangenome fluidity."}
+
+## ----additional path - binary lifestyle simple models results plot, fig.cap="Comparison of support for a simple set of models varying by which of lifestyle (calculated with no intermediate/both category), effective population size and genome size causes pangenome fluidity."----
 plot(s8)
-```
 
-We again found that model c had the best support, with support with model a being within 2CICcs, indicating similar support. We averaged these two simple models together to give the below result. This gives similar support for a direct causal role of lifestyle and genome size, and less support for a direct role of effective population size.
 
-``` {r additional path - binary lifestyle simple models best model, fig.cap="Average of two models with best support, out of a set of simple models."}
+## ----additional path - binary lifestyle simple models best model, fig.cap="Average of two models with best support, out of a set of simple models."----
 average_model_8_conditional <- average(result_8, avg_method = "conditional") 
 ## Plot average best models
 plot(average_model_8_conditional, curvature = 0.1, type="width", 
      labels = c(LS="Lifestyle", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=4) 
-```
 
-We then examined a more complex set of models allowing paths between the variables, as in the previous analysis.
 
-``` {r additional path - binary lifestyle complex models results}
+## ----additional path - binary lifestyle complex models results---------------------------------------------------------
 ## This time Brownian Motion is a better model of evolution.
 result_9 <- phylo_path(models_LS_GS_NE_complex, data=pangenome_lifestyles_no_unknown_nofree_ne_2, tree=dataTree, 
                        model="BM", method="logistic_MPLE")
@@ -2227,24 +1869,18 @@ result_9 <- phylo_path(models_LS_GS_NE_complex, data=pangenome_lifestyles_no_unk
 ## Path analysis results
 s9 <- summary(result_9)
 
-```
 
-We found that four models had similar support.
 
-``` {r additional path - binary lifestyle complex models results average models, fig.cap=""}
+## ----additional path - binary lifestyle complex models results average models, fig.cap=""------------------------------
 # Four models have high support (within 2CICs)
 # Model c, from result 6, has 3rd highest support.
 # Top is model n, which has LS->GS and NE->GS, in addition to LS->GF and GS->GF.
 # Second is model l, which is identical to model n but with no NE->GF.
 plot(s9)
 
-```
 
-We then averaged these four models together. This gives the overall best model, shown in the below figure. As with the previous result, it suggests that lifestyle and genome size have a strong direct influence on pangenome fluidity. Although the average best model did include a direct influence of effective on pangenome fluidity, it was a very small coefficient value and also a negative value, in the opposite direction than predicted, suggesting limited support for this path. This is likely because coding the lifestyle traits as binary removes some of the variance, simplifying the variance available to the model. This impacts effective population size because this simplified lifestyle trait appears to have a relatively strong influence on effective population size itself.
 
-Despite these differences, we can make the same qualitative conclusions from this analysis as we did from the previous analysis: lifestyle and genome size directly influence pangenome fluidity, and effective population size is correlated with fluidity potentially because it is itself influenced by lifestyle.
-
-``` {r additional path - binary lifestyle complex models best conditional, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure."  }
+## ----additional path - binary lifestyle complex models best conditional, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure."----
 average_model_9_conditional <- average(result_9, avg_method = "conditional") 
 ## Plot average best models
 # Suggests lifestyle is most important - has the largest direct impact on GF an causes other two factors.
@@ -2252,31 +1888,9 @@ average_model_9_conditional <- average(result_9, avg_method = "conditional")
 plot(average_model_9_conditional, curvature = 0.1, algorithm="dh", type="width", 
      labels = c(LS="Lifestyle", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=3) 
-```
 
-### Multiple component analysis 
 
-Next, we used Multiple Component Analysis (MCA) to compute a single variable to capture variation across species' lifestyles. 
-
-MCA is a more general form of a Principle Component Analysis (PCA). A PCA plots all the variables in multidimensional space (n dimensions = n variables). It then finds ‘components’, which are coordinate values that maximise the variation between variables in groups. It does this sequentially, each dimension capturing variation the other(s) hadn’t fully captured. 
-
-Each variable contributes to these components, but often to different extents – some may contribute virtually nothing to some components.
-
-For our purposes, we ran a MCA to generate a component that explains a high proportion of the variation across species for their combined lifestyle values.
-
-We used MCA rather than PCA because our lifestyle data is best explained as categorical data, and PCA doesn’t work so well with this kind of data. 
-
-As discussed in the previous section, there are different ways of coding our lifestyle traits depending on whether the intermediate ‘both’ categories are included for several traits. 
-
-We used a similar process to above, where we both:
-1.	Kept the ‘both’ in as a category.
-2.	Combined the ‘both’ with one of the other two categories.
-
-We then ran an MCA on the data for these two methods of coding the variables to generate a component explanining variation across lifestyle traits. We did this for the 115 species which we had data for all four lifesyle traits. To run the MCA, we used the `MCA()` function from the 'FactoMineR' package. We also used the 'factoextra' package for visualization of the MCA results.
-
-We then conducted analogous phylogenetic path analyses to those described above using this component, across the 75 species which we had both lifestyle and effective population size data for.
-
-``` {r MCA set-up}
+## ----MCA set-up--------------------------------------------------------------------------------------------------------
 ## Option 1 - code as binary and/or discrete traits
 ## Don't have Effect on host in this analysis - not related to environmental variability
 ## More & less indicates level of environmental variability
@@ -2303,43 +1917,31 @@ summary_MCA_dataset_1 <- summary(MCA_dataset_1)[, 1:4]
 ## MCA Analysis
 MCA_results_1 <- MCA(MCA_dataset_1, graph = FALSE)
 
-```
 
-The 'scree plot' below shows the initial results from the MCA. Each bar is a dimension which explains different percentages of variance across the species. We can then explore which aspect of variation each dimension explains.
 
-``` {r MCA initial results, fig.cap="Dimensions produced from MCA analysis on four lifestyle traits across 115 species. Dimensions are ordered from left to right by the percentage of total variation that they explain, which is printed above each bar."}
+## ----MCA initial results, fig.cap="Dimensions produced from MCA analysis on four lifestyle traits across 115 species. Dimensions are ordered from left to right by the percentage of total variation that they explain, which is printed above each bar."----
 #print(MCA_results_1)
 eig.val_1 <- get_eigenvalue(MCA_results_1)
 
 fviz_screeplot(MCA_results_1, addlabels = TRUE, ylim = c(0, 45))
 
-```
 
-We examined the contribution of the four variables and their categories to the first two dimensions.The first dimension has a more uniform distribution of contributions than the second dimension. All categories contribute, although with considerable variation in quantity, to the first dimension, while a few contribute virtually nothing to the second dimension. A more uniform distribution likely means the dimension captures variation across all the lifestyle traits, which is what we would like to produce from the MCA.
 
-```{r MCA results exploration, fig.cap="Contribution of variables and their categories to the two dimensions explaining the most variation in lifestyle across the species. OF = host reliance (obligate/facultative); IE = host location (intra/extracellular); EH = effect on host (pathogen/mutualist); M = motility (non-motile/motile)."}
+## ----MCA results exploration, fig.cap="Contribution of variables and their categories to the two dimensions explaining the most variation in lifestyle across the species. OF = host reliance (obligate/facultative); IE = host location (intra/extracellular); EH = effect on host (pathogen/mutualist); M = motility (non-motile/motile)."----
 ## Results
 var_1 <- get_mca_var(MCA_results_1)
 
 fviz_contrib(MCA_results_1, choice = "var", axes = 1, top = 15) +#Very uniform
 fviz_contrib(MCA_results_1, choice = "var", axes = 2, top = 15) #Some not contributing
-```
 
-Next we examined how the two dimensions correlate with each other, and how this differs between variables.
 
-``` {r MCA dimension correlations, fig.cap="Correlation between dimensions 1 and 2, with a panel for each lifestyle variable highlighting the location of the categories within that lifestyle. Dots represent possible values for a species for each dimension, and colours are to distinguish the categories. Dimension 1 groups species in a way that better reflects what we would like from a single lifestyle variable."}
+## ----MCA dimension correlations, fig.cap="Correlation between dimensions 1 and 2, with a panel for each lifestyle variable highlighting the location of the categories within that lifestyle. Dots represent possible values for a species for each dimension, and colours are to distinguish the categories. Dimension 1 groups species in a way that better reflects what we would like from a single lifestyle variable."----
 
 fviz_ellipses(MCA_results_1, c("OF","IE", "EH","M"),geom = "point") # Dimension 1 seems to be pretty good
 
-```
 
-Dimension 1 groups the categories along the axes in the order we would expect. The ‘Low’ categories (i.e. the ones that correspond to lower lifestyle/environmental variability) are to the right hand side, while the ‘High’ are to the left for all four categories.
 
-For dimension 1, the ‘Intermediate’ categories, where present, appear to be similar to one of either the 'High' or 'Low' categories, depending on the lifestyle trait. However, for dimension 2, the 'Intermediate' categories appear more distinct, and for host location and motility in particular, this means the categories do not reflect the gradient of environmental variabilty we would like to capture in a single variable. Furthermore, dimension 2 does not distinguish between obligate and facultative species. 
-
-In general, dimension 1 seems to be grouping the categories pretty similarly to the original lifestyle measure. Additionally, it captures almost double the quantity of variation as dimension 2. Consequently, we decided to use dimension 1 going forward for our single measure of bacterial lifestyle.
-
-``` {r MCA extract dimension 1}
+## ----MCA extract dimension 1-------------------------------------------------------------------------------------------
 ind_1 <- get_mca_ind(MCA_results_1)
 species_dimension1_1 <- as.vector(ind_1$coord[,1]) 
 
@@ -2362,11 +1964,9 @@ pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS <- pangenome_lifestyles_no_un
 pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS <- pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS %>%
   mutate(LS = OF+IE+EH+M, LS_MCA = (-1*species_dimension1_1))
 
-```
 
-Dimension 1 is highly correlated with the original lifestyle variable we used in our main analysis. 
 
-```{r LS vs MCA LS plot, fig.cap="Correlation between our original lifestyle variable used in our main analysis and dimension 1 from the MCA."}
+## ----LS vs MCA LS plot, fig.cap="Correlation between our original lifestyle variable used in our main analysis and dimension 1 from the MCA."----
 ggplot(pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS, aes(x=LS,y=LS_MCA)) +
   geom_point() +
   theme_classic() +
@@ -2374,11 +1974,9 @@ ggplot(pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS, aes(x=LS,y=LS_MCA)) +
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5), 
         legend.text = element_text(size=12))
-```
 
-We then repeated the path analysis from our main analysis but using dimension 1 instead of our original lifestyle variable.
 
-``` {r MCA NE/GS/LS path analysis}
+## ----MCA NE/GS/LS path analysis----------------------------------------------------------------------------------------
 #Set row names as species
 #rownames(pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS) <- pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS$Species
 
@@ -2389,13 +1987,9 @@ pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS_ne <- pangenome_lifestyles_no
 
 pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS_ne <- pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS_ne %>% rename(NE = Ne_small,GS=genome_size)
 
-```
 
-We first compared a set of simple models, varying by how each of lifestyle, effective population size and genome size influence pangenome fluidity. We found that model c had the highest support; this is the same model that had the highest support in our main analysis. 
 
-However, for this analysis, all models were rejected as possible models of causation across the factors (p-value was less than 0.05).
-
-``` {r MCA NE/GS/LS path analysis simple models, fig.cap="Set of simple models varying by influence of lifestyle (MCA dimension 1), effective population size and genome size, on pangenome fluidity.", fig.height=6}
+## ----MCA NE/GS/LS path analysis simple models, fig.cap="Set of simple models varying by influence of lifestyle (MCA dimension 1), effective population size and genome size, on pangenome fluidity.", fig.height=6----
 models_LS_MCA_GS_NE_simple <- define_model_set(
   a = c(PF~LS_MCA+GS+NE),
   b = c(PF~LS_MCA+NE),
@@ -2407,9 +2001,9 @@ models_LS_MCA_GS_NE_simple <- define_model_set(
 )
 
 plot_model_set(models_LS_MCA_GS_NE_simple, text_size = 4)
-```
 
-``` {r MCA E/GS/LS path analysis simple models results}
+
+## ----MCA E/GS/LS path analysis simple models results-------------------------------------------------------------------
 
 result_8 <- phylo_path(models_LS_MCA_GS_NE_simple, data=pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS_ne,
                        tree=dataTree, 
@@ -2424,27 +2018,22 @@ average_model_8_conditional <- average(result_8, avg_method="conditional")
 s8_subset <- s8 %>% select(w,p,CICc)
 
 knitr::kable(s8_subset, caption="Comparison of support for a simple set of models varying by which of lifestyle (MCA dimension 1), effective population size and genome size causes pangenome fluidity.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r MCA E/GS/LS path analysis simple models results plot, fig.cap="Comaparison of support for a simple set of models varying by which of lifestyle (MCA dimension 1), effective population size and genome size causes pangenome fluidity."}
+
+## ----MCA E/GS/LS path analysis simple models results plot, fig.cap="Comaparison of support for a simple set of models varying by which of lifestyle (MCA dimension 1), effective population size and genome size causes pangenome fluidity."----
 plot(s8)
-```
 
-We examined the specific results of the model with the highest support, model c. The model was rejected because the lifestyle MCA variable was not conditionally independent from genome size. Thus, a more complex model is required to fully explain any causal relationships between these variables.
 
-``` {r MCA NE/GS/LS path analysis simple models results d sep best model, echo=FALSE}
+## ----MCA NE/GS/LS path analysis simple models results d sep best model, echo=FALSE-------------------------------------
 # Rejected because lifestyle not conditionally independent from 
 result_8_dsep_modelc <- result_8$d_sep$c
 
 result_8_dsep_modelc_subset <- result_8_dsep_modelc %>% select(d_sep, p)
 
 knitr::kable(result_8_dsep_modelc_subset, caption="Specific resuls for model c, showing support for each conditional independency specified by the model. Lifestyle and genome size are not conditionally independent, indicated by the p-value of less than 0.05, meaning they are significantly correlated.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
 
-We next compared support for a set of more complex models, allowing paths between lifestyle (MCA dimension 1), genome size and effective population size.
-
-``` {r MCA NE/GS/LS path analysis complex models, fig.cap="A set of more complex causal models, varying by which of lifestyle (MCA dimension 1), genome size and effective population size directly influence pangenome fluidity, and how they might influence each other.", fig.height=10}
+## ----MCA NE/GS/LS path analysis complex models, fig.cap="A set of more complex causal models, varying by which of lifestyle (MCA dimension 1), genome size and effective population size directly influence pangenome fluidity, and how they might influence each other.", fig.height=10----
 
 models_LS_MCA_GS_NE_complex <- define_model_set(
   a = c(PF~LS_MCA+GS+NE),
@@ -2466,11 +2055,9 @@ models_LS_MCA_GS_NE_complex <- define_model_set(
 plot_model_set(models_LS_MCA_GS_NE_complex, labels = c(LS_MCA="Lifestyle\n(MCA)", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=3) # Plot all models
 
-```
 
-We found that the model with the highest support was model n, which was also the case for our main analysis. 
 
-``` {r MCA NE/GS/LS path analysis complex models results}
+## ----MCA NE/GS/LS path analysis complex models results-----------------------------------------------------------------
 
 result_9 <- phylo_path(models_LS_MCA_GS_NE_complex, data=pangenome_lifestyles_no_unknown_nofree_MCA_dim1_LS_ne, tree=dataTree, 
                        model="BM", method="logistic_MPLE")
@@ -2482,43 +2069,31 @@ s9 <- summary(result_9)
 s9_subset <- s9 %>% select(w,p,CICc)
 
 knitr::kable(s9_subset, caption="Comparison of set of more complex causal models, varying by which of lifestyle (MCA dimension 1), genome size and effective population size directly influence pangenome fluidity, and how they might cause each other.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
-```
 
-``` {r MCA E/GS/LS path analysis complex models results plot, fig.cap="Comparison of support for a more complex set of models varying by which of lifestyle (MCA dimension 1), genome size and effective population size directly influence pangenome fluidity, and how they might cause each other."}
+
+## ----MCA E/GS/LS path analysis complex models results plot, fig.cap="Comparison of support for a more complex set of models varying by which of lifestyle (MCA dimension 1), genome size and effective population size directly influence pangenome fluidity, and how they might cause each other."----
 plot(s9)
-```
 
-Additionally, we found that three other models had support within 2 CICs of model n. We can average these four models together, either by averaging the values of each path only when they are present in a model (first figure below), or by setting that path to 0 when it is not present (second figure below).
 
-Compared to our main analysis, the causal structure between the variables appears less well resolved. This is likely because dimension 1 of the MCA explained only 30% of the variance across species, and did not neccesarily order the categories of each lifestyle trait in a manner which best reflects the biology underlying that trait, particularly with relation to how it might influence environmental variability.
-
-However, the result is generally the same as our main analysis: both genome size and lifestyle have a direct influence on pangenome fluidity, with little evidence of a direct influence of effective population size on pangenome fluidity (this path was present in only one of the four models, and when it was present the correlation coefficient was low). 
-
-``` {r MCA NE/GS/LS path analysis complex models results average models conditional, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models."}
+## ----MCA NE/GS/LS path analysis complex models results average models conditional, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models."----
 ## Plot average best model
 average_model_9_conditional <- average(result_9, avg_method = "conditional") 
 
 plot(average_model_9_conditional, curvature = 0.1, algorithm="dh", type="width", 
      labels = c(LS_MCA="Lifestyle\n(MCA)", GS="Genome\nsize",
                 PF="Panenome\nfluidity", NE="Eff. pop\nsize"), text_size=3) 
-```
 
-``` {r MCA NE/GS/LS path analysis complex models results average models full, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure, with correlation coefficients weighted by setting absent paths to zero when averaging models."}
+
+## ----MCA NE/GS/LS path analysis complex models results average models full, fig.cap="Best model of causal relationships between lifestyle, genome size, effective population size and pangenome fluidity; an average of four models with similar structure, with correlation coefficients weighted by setting absent paths to zero when averaging models."----
 
 average_model_9_full <- average(result_9, avg_method = "full") 
 
 plot(average_model_9_full, curvature = 0.1, algorithm="dh", type="width", 
      labels = c(LS_MCA="Lifestyle\n(MCA)", GS="Genome\nsize",
                 PF="Pangenome\nfluidity", NE="Eff. pop\nsize"), text_size=3) 
-```
 
-## Host-association and effective population size
 
-We also ran very simple phylogenetic path analsyis, considering only two factors' potential influence on species' pangenome fluidity: whether a species was host-associated or free-living, and species' effective population size.
-
-We used our categorization of species into four groups based on the frequency of their host association, as in Figure 2a in the main text and Figure 3 of this document. These categories were: Host-associated, mostly host, mostly free, and free-living. Because we only considered species which were at least sometimes host-associated in previous analyses, we did not include the four 'free-living' species. Of those remaining species, we coded host-associated as 0, mostly host as 0.5, and mostly free-living as 1, to convert this into a numeric variable.
-
-``` {r host/free/most and NE path set-up}
+## ----host/free/most and NE path set-up---------------------------------------------------------------------------------
 pangenome_lifestyles_host_free_4_ne <- pangenome_lifestyles_no_unknown_nofree_ne %>%
   mutate(Host_free_4 = case_when(Host_or_free=="Host" ~ "Host",
                                  Host_or_free=="Free" ~ "Free",
@@ -2553,11 +2128,9 @@ pangenome_lifestyles_no_unknown_nofree_ne_2 <- pangenome_lifestyles_host_free_4_
 pangenome_lifestyles_no_unknown_nofree_ne_2 <- pangenome_lifestyles_no_unknown_nofree_ne_2 %>%
   mutate(LS = OF+IE+EH+M)
 
-```
 
-Using this variable, we used phylogenetic path analysis to compare support for a very simple set of models.
 
-``` {r host/free/most and NE path simple models}
+## ----host/free/most and NE path simple models--------------------------------------------------------------------------
 ##Code models
 # Host/free vs NE
 models_HF4_NE <- define_model_set(
@@ -2568,16 +2141,14 @@ models_HF4_NE <- define_model_set(
   e = c(PF~NE, HF_4~NE)
 )
 
-```
 
-``` {r host/free/most and NE path simple models plot, fig.cap="Set of simple models varying by which of effective population size and whether a species is mostly host-associated or free-living influences pangenome fluidity.", fig.height=7} 
+
+## ----host/free/most and NE path simple models plot, fig.cap="Set of simple models varying by which of effective population size and whether a species is mostly host-associated or free-living influences pangenome fluidity.", fig.height=7----
 plot_model_set(models_HF4_NE, labels = c(HF_4="Host/free",
                 PF="Pangenome\nfluidity", NE="Eff. pop\nsize"), text_size=3)
-```
 
-Three of the five models were not rejected and were within 2 CICs of each other. The remaining two models (model b and model e) were rejected (their p-values were less than 0.01). Model b had only an influence of effective population size on pangenome fluidity, but no influence of lifestyle. Model e was the same as model b, with only a direct influence of effective population size on pangenome fluidity, but with an additional influence of effective population size on lifestyle. These were both rejected, suggesting no support for effective population size being the key factor driving pangenome fluidity compared to lifesyle (in this case, how frequently a species' is host-associated).
 
-``` {r host/free/most and NE path simple models results}
+## ----host/free/most and NE path simple models results------------------------------------------------------------------
 ## Run path analysis
 ## This time Brownian Motion is a better model of evolution.
 result_10 <- phylo_path(models_HF4_NE, data=pangenome_lifestyles_no_unknown_nofree_ne_2, tree=dataTree, 
@@ -2592,17 +2163,13 @@ s10_subset <- s10 %>% select(w,p,CICc)
 
 knitr::kable(s10_subset, caption="Comparison of set of more complex causal models, varying by which of host-association (host, mostly host, mostly free) and effective population size influence pangenome fluidity.", digits=4)%>% kable_styling(latex_options = "HOLD_position")
 
-```
 
-``` {r host/free/most and NE path simple models results plot, fig.cap="Comparison of set of more complex causal models, varying by which of host-association (host, mostly host, mostly free) and effective population size influence pangenome fluidity."}
+
+## ----host/free/most and NE path simple models results plot, fig.cap="Comparison of set of more complex causal models, varying by which of host-association (host, mostly host, mostly free) and effective population size influence pangenome fluidity."----
 plot(s10)
-```
 
-We averaged the three models with similar support together, both averaging only when that path is present (first plot below) and setting the path to zero when it is not present (second plot below). In summary, these models suggest strong support for a causal influence of lifestyle, here simply the extent to which a species is host-associated, on pangenome fluidity. We find some evidence that lifestyle also influences effective population size. Finally, we find no evidence that effective population size has a key direct influence on pangenome fluidity.
 
-These results agree with the best model in our main analysis, when we considered more lifestyle traits, and also genome size. 
-
-``` {r host/free/most and NE path simple models results average best model conditional, fig.cap="Average best model of causal relationships between host-association (host-associated, mostly host and mostly free-living), effective population size and pangenome fluidity."}
+## ----host/free/most and NE path simple models results average best model conditional, fig.cap="Average best model of causal relationships between host-association (host-associated, mostly host and mostly free-living), effective population size and pangenome fluidity."----
 ## Plot average best model
 average_model_10_conditional <- average(result_10, avg_method = "conditional") 
 
@@ -2610,9 +2177,9 @@ average_model_10_conditional <- average(result_10, avg_method = "conditional")
 ## Clear that host/free and/or primary env is most important for GF -> little support for NE.
 plot(average_model_10_conditional, curvature = 0.1, algorithm="dh", type="width", 
      labels = c(PF="Pangenome\nfluidity", NE="Eff. pop\nsize", HF_4="Host or\nfree"), text_size=3) 
-```
 
-``` {r host/free/most and NE path simple models results average best model full, fig.cap="Average best model of causal relationships between host-association (host-associated, mostly host and mostly free-living), effective population size and pangenome fluidity; an average of four models with similar structure, with correlation coefficients weighted by setting absent paths to zero when averaging models."}
+
+## ----host/free/most and NE path simple models results average best model full, fig.cap="Average best model of causal relationships between host-association (host-associated, mostly host and mostly free-living), effective population size and pangenome fluidity; an average of four models with similar structure, with correlation coefficients weighted by setting absent paths to zero when averaging models."----
 ## Plot average best model
 average_model_10_full <- average(result_10, avg_method = "full") 
 
@@ -2620,26 +2187,9 @@ average_model_10_full <- average(result_10, avg_method = "full")
 ## Clear that host/free and/or primary env is most important for GF -> little support for NE.
 plot(average_model_10_full, curvature = 0.1, algorithm="dh", type="width", 
      labels = c(PF="Pangenome\nfluidity", NE="Eff. pop\nsize", HF_4="Host or\nfree"), text_size=3) 
-```
 
 
-# Other measures of pangenome variation across species
-
-We also identified ‘core’ and ‘accessory’ genes, to examine the extent to which the relative proportion of these correlated with our main measure of pangenome structure, pangenome fluidity. There is some inconsistency in how to define core genes in the literature. Some authors define core genes as those present in all genomes, while others choose a high threshold that allows for an occasional genome not to carry that gene. 
-
-Accordingly, we defined core genes using three different thresholds: (1) genes present in 100% of genomes; (2) genes present in $\geq$ 90% of genomes; (3) genes that present in $\geq$ 80% of genomes. We also identified genes that only existed in a small subset of genomes, which we refer to here as ‘accessory’ genes for simplicity. We defined these accessory genes with two thresholds: (1) genes present in $\leq$ 10% of genomes; (2) genes present in $\leq$ 20% of genomes. 
-
-We then calculated the percentage of core and accessory genes for each species’ pangenome. We did this for all thresholds of core and accessory genes stated above.
-
-In addition, we were also interested in understanding the average percentage of core genes at the individual genome level, rather than the entire pangenome level. Consequently, we calculated the proportion of core genes at the genome level for each species as followed:
-
-$Proportion~of~core~genes~in~genome=\sum_{i}^{n}\frac{\frac{number~of~core~genes~in~genome~i}{number~of~genes~in~genome~i}}{number~of~genomes(n)}$ 
-
-We did this for the three thresholds of core genes, as stated above. 
-
-Some genomes did not contain any genes found in $\leq$ 10 or $\leq$ 20% and so this would bias our calculations of the average percentage of accessory genes at the genome level. Therefore, we only looked at the percentage of accessory genes at the pangenome level.
-
-``` {r core 100 in pangenome vs fluidity, fig.cap="Pangenome fluidity is highly correlated with the proportion of core genes in the pangenome.\nScatterplot showing how pangenome fluidity varies with the percentage of genes in a species’ pangenome which are ‘core’, defined in this plot as present in 100% of genomes. Data includes all 126 species."}
+## ----core 100 in pangenome vs fluidity, fig.cap="Pangenome fluidity is highly correlated with the proportion of core genes in the pangenome.\nScatterplot showing how pangenome fluidity varies with the percentage of genes in a species’ pangenome which are ‘core’, defined in this plot as present in 100% of genomes. Data includes all 126 species."----
 ## Percentage of pangenome that is core (core=100% genomes) vs pangenome fluidity
 ggplot(pangenome_lifestyles, aes(x=percentage_core_100,y=pangenome_fluidity)) +
   geom_point() +
@@ -2650,9 +2200,9 @@ ggplot(pangenome_lifestyles, aes(x=percentage_core_100,y=pangenome_fluidity)) +
   theme_classic() +
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5))
-```
 
-``` {r histogram of pangenome size, fig.cap="Pangenome size varies considerably across species.\nHistogram showing the variation in pangenome size, meaning the number of unique genes sequenced across all genomes of a species. Data is for all 126 species."}
+
+## ----histogram of pangenome size, fig.cap="Pangenome size varies considerably across species.\nHistogram showing the variation in pangenome size, meaning the number of unique genes sequenced across all genomes of a species. Data is for all 126 species."----
 
 # Shows variation in pangenome size
 ggplot(pangenome_lifestyles, aes(x=pan_size_100)) +
@@ -2663,9 +2213,9 @@ ggplot(pangenome_lifestyles, aes(x=pan_size_100)) +
   theme(plot.title = element_text(size=15, hjust=0.5), axis.title = element_text(size=13),
         axis.text = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5))
 
-```
 
-``` {r stacked bar plot genome size core vs accessory, fig.cap="A stacked bar plot, with a bar for each species; the total height is the average genome size for that species, the ‘core’ are the genes present in 100% of genomes, and the ‘accessory’ genes are any remaining genes not present in 100% of genomes."}
+
+## ----stacked bar plot genome size core vs accessory, fig.cap="A stacked bar plot, with a bar for each species; the total height is the average genome size for that species, the ‘core’ are the genes present in 100% of genomes, and the ‘accessory’ genes are any remaining genes not present in 100% of genomes."----
 # Show variation in pangenome size, with core & accessory at 100% threshold
 pangenome_lifestyles <- pangenome_lifestyles %>%
   mutate(genome_accessory_100 = genome_size-core_100)
@@ -2689,11 +2239,9 @@ ggplot(pangenome_lifestyles_stacked_genome, aes(fill=name, y=value,x=reorder(Spe
         axis.text.y = element_text(size=12), axis.title.y=element_text(angle=360,vjust=0.5),
         axis.text.x = element_blank(), axis.ticks.x=element_blank())
 
-```
 
-Pangenome fluidity was not influenced by the number of genomes we had for each species.
 
-``` {r fluidity vs number of genomes, fig.height=7, fig.cap="No correlation between pangenome fluidity and the number of genomes per species. A. All species; B. Subset with species between 10-50 genomes."}
+## ----fluidity vs number of genomes, fig.height=7, fig.cap="No correlation between pangenome fluidity and the number of genomes per species. A. All species; B. Subset with species between 10-50 genomes."----
 #summary(lm(pangenome_fluidity~Number_of_Strain,data=pangenome_lifestyles))
 
 
@@ -2722,12 +2270,9 @@ fluidity_n_genomes <- fluidity_n_genomes_a + fluidity_n_genomes_b +
 
 fluidity_n_genomes
 
-```
 
 
-In contrast, the percentage of core genes in the pangenome and the size of the pangenome were both correlated with the number of genomes we had for each species.
-
-``` {r percentage core pangenome vs number of genomes, fig.height=7, fig.cap="The percentage of the pangenome which is core genes is negatively correlated with the number of genomes per species. A. All species; B. Subset with species between 10-50 genomes."}
+## ----percentage core pangenome vs number of genomes, fig.height=7, fig.cap="The percentage of the pangenome which is core genes is negatively correlated with the number of genomes per species. A. All species; B. Subset with species between 10-50 genomes."----
 #summary(lm(percentage_core_100~Number_of_Strain,data=pangenome_lifestyles))
 
 per_core_n_genomes_a <- ggplot(pangenome_lifestyles, aes(x=Number_of_Strain, y=percentage_core_100)) +
@@ -2754,9 +2299,9 @@ per_core_n_genomes <- per_core_n_genomes_a + per_core_n_genomes_b +
   plot_layout(ncol=1)
 
 per_core_n_genomes
-```
 
-``` {r pangenome size vs number of genomes, fig.height=7, fig.cap="The size of the pangenome is positively correlated with the number of genomes per species. A. All species; B. Subset with species between 10-50 genomes."}
+
+## ----pangenome size vs number of genomes, fig.height=7, fig.cap="The size of the pangenome is positively correlated with the number of genomes per species. A. All species; B. Subset with species between 10-50 genomes."----
 
 #summary(lm(pan_size_100~Number_of_Strain,data=pangenome_lifestyles))
 
@@ -2783,12 +2328,9 @@ pan_size_n_genomes <- pan_size_n_genomes_a + pan_size_n_genomes_b +
   plot_layout(ncol=1)
 
 pan_size_n_genomes
-```
 
-# Phylogeny
-Below is the phylogeny we used for all analyses in our paper.
 
-``` {r tree plot species labels, fig.height=12, fig.width=8, fig.cap="Phylogeny of all 126 species in our dataset, which is available to download in ultrametric nexus format from github (*link*). Coloured squares indicate whether a species is host-associated, free-living, or a mixture of both, and bars indicate pangenome fluidity."}
+## ----tree plot species labels, fig.height=12, fig.width=8, fig.cap="Phylogeny of all 126 species in our dataset, which is available to download in ultrametric nexus format from github (*link*). Coloured squares indicate whether a species is host-associated, free-living, or a mixture of both, and bars indicate pangenome fluidity."----
 #tree<-read.tree("tree.tre")
 
 basic_tree <- ggtree(dataTree) + geom_tiplab(size=2.5, fontface=3) +
@@ -2818,12 +2360,9 @@ tree_3 <- tree_2 +
   theme(plot.margin = unit(c(0,0,0,0), "mm"))
 
 tree_3
-```
 
-# Species lifestyle table
-Below is a table with all our species and their categories for the key lifestyle variables we examined.
 
-``` {r species lifestyle table}
+## ----species lifestyle table-------------------------------------------------------------------------------------------
 pangenome_lifestyles_table <- pangenome_lifestyles_host_free_4 %>%
   select(Species,Host_free_4,
          Obligate_facultative,Intra_or_extracellular,
@@ -2840,4 +2379,4 @@ knitr::kable(pangenome_lifestyles_table,longtable=TRUE,booktabs=TRUE, linesep=""
                            "Host location", "Effect on host", "Motility", "# Genomes"))%>% 
   kable_styling(latex_options = c("HOLD_position","repeat_header"), font_size=8)
 
-```
+
